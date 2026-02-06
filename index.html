@@ -18,7 +18,9 @@
 <body>
   <div class="app">
 
+    <!-- ✅ CHILD 1 of .app -->
     <aside class="sidebar">
+
       <nav class="nav" aria-label="Navigation">
         <button class="nav__item is-active" data-view="dashboard">
           <span class="nav__icon" aria-hidden="true">🏠</span>
@@ -51,6 +53,7 @@
         </button>
       </nav>
 
+      <!-- ✅ MUST be INSIDE the aside -->
       <div class="sidebar__footer">
         <div class="mini">
           <div class="mini__title">Data</div>
@@ -62,8 +65,10 @@
           <button class="btn btn--danger" id="btnReset">Reset Everything</button>
         </div>
       </div>
+
     </aside>
 
+    <!-- ✅ CHILD 2 of .app -->
     <main class="main">
       <header class="topbar">
         <div>
@@ -78,6 +83,7 @@
 
       <section class="content">
 
+        <!-- DASHBOARD -->
         <section class="view is-active" id="view-dashboard">
           <div class="grid2">
             <div class="card">
@@ -110,6 +116,7 @@
           </div>
         </section>
 
+        <!-- SKILLS -->
         <section class="view" id="view-skills">
           <div class="grid2">
             <div class="card">
@@ -177,6 +184,7 @@
           </div>
         </section>
 
+        <!-- PROJECTS -->
         <section class="view" id="view-projects">
           <div class="grid2">
             <div class="card">
@@ -253,6 +261,7 @@
           </div>
         </section>
 
+        <!-- KSB -->
         <section class="view" id="view-ksb">
           <div class="grid2">
             <div class="card">
@@ -318,6 +327,7 @@
           </div>
         </section>
 
+        <!-- NOTES -->
         <section class="view" id="view-notes">
           <div class="grid2">
             <div class="card">
@@ -363,6 +373,7 @@
           </div>
         </section>
 
+        <!-- REFLECTION -->
         <section class="view" id="view-reflection">
           <div class="card">
             <div class="card__head">
