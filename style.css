@@ -324,10 +324,18 @@ input:focus, select:focus, textarea:focus{
 }
 .smalllink:hover{ text-decoration: underline; }
 
-@media (max-width: 980px){
+/* Only collapse to mobile when the screen is actually small */
+@media (max-width: 720px){
   .app{ grid-template-columns: 1fr; }
   .sidebar{ position: sticky; top:0; z-index:10; }
   .grid2{ grid-template-columns: 1fr; }
   .filters{ flex-direction:column; }
   .filters select{ width: 100%; }
+}
+
+.sidebar{
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
 }
