@@ -22,45 +22,60 @@
 
     <!-- Sidebar -->
     <aside class="sidebar">
+
+      <!-- Optional brand block (CSS already supports it) -->
+      <div class="brand">
+        <div class="brand__mark">📚</div>
+        <div>
+          <div class="brand__name">Learning & Skills</div>
+          <div class="brand__tag">Skills • Projects • KSBs</div>
+        </div>
+      </div>
+
       <nav class="nav" aria-label="Navigation">
         <button class="nav__item is-active" data-view="dashboard">
           <span class="nav__icon" aria-hidden="true">🏠</span>
           <span class="nav__label">Dashboard</span>
         </button>
+
         <button class="nav__item" data-view="skills">
           <span class="nav__icon" aria-hidden="true">📈</span>
           <span class="nav__label">Skills</span>
         </button>
+
         <button class="nav__item" data-view="projects">
           <span class="nav__icon" aria-hidden="true">🧩</span>
           <span class="nav__label">Projects</span>
         </button>
+
         <button class="nav__item" data-view="ksb">
           <span class="nav__icon" aria-hidden="true">🎓</span>
           <span class="nav__label">KSB Mapping</span>
         </button>
+
         <button class="nav__item" data-view="notes">
           <span class="nav__icon" aria-hidden="true">🗒️</span>
           <span class="nav__label">Notes & Certs</span>
         </button>
+
         <button class="nav__item" data-view="reflection">
           <span class="nav__icon" aria-hidden="true">🧠</span>
           <span class="nav__label">Weekly Reflection</span>
         </button>
       </nav>
 
-    <div class="sidebar__footer">
-    <div class="mini">
-      <div class="mini__title">Data</div>
-      <div class="mini__row">
-        <button class="btn btn--ghost" id="btnExport">Export</button>
-        <label class="btn btn--ghost" for="importFile" role="button">Import</label>
-        <input id="importFile" type="file" accept="application/json" hidden />
+      <div class="sidebar__footer">
+        <div class="mini">
+          <div class="mini__title">Data</div>
+          <div class="mini__row">
+            <button class="btn btn--ghost" id="btnExport">Export</button>
+            <label class="btn btn--ghost" for="importFile" role="button">Import</label>
+            <input id="importFile" type="file" accept="application/json" hidden />
+          </div>
+          <button class="btn btn--danger" id="btnReset">Reset Everything</button>
+        </div>
       </div>
-      <button class="btn btn--danger" id="btnReset">Reset Everything</button>
-    </div>
-  </div>
-</aside>
+    </aside>
 
     <!-- Main -->
     <main class="main">
