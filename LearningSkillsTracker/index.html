@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Learning & Skills Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<!-- App Icon / Favicon -->
+<link rel="icon" href="assets/icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
+
+<!-- iOS Home Screen Icon -->
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="assets/icons/manifest.json">
+<meta name="theme-color" content="#0b0f17">
+
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" aria-label="Primary">
+      <div class="brand">
+        <div class="brand__mark" aria-hidden="true">🧠</div>
+        <div class="brand__text">
+          <div class="brand__name">Learning & Skills</div>
+          <div class="brand__tag">Skill Tree • KSBs • Projects</div>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Navigation">
+        <button class="nav__item is-active" data-view="dashboard">
+          <span class="nav__icon" aria-hidden="true">🏠</span>
+          <span class="nav__label">Dashboard</span>
+        </button>
+        <button class="nav__item" data-view="skills">
+          <span class="nav__icon" aria-hidden="true">📈</span>
+          <span class="nav__label">Skills</span>
+        </button>
+        <button class="nav__item" data-view="projects">
+          <span class="nav__icon" aria-hidden="true">🧩</span>
+          <span class="nav__label">Projects</span>
+        </button>
+        <button class="nav__item" data-view="ksb">
+          <span class="nav__icon" aria-hidden="true">🎓</span>
+          <span class="nav__label">KSB Mapping</span>
+        </button>
+        <button class="nav__item" data-view="notes">
+          <span class="nav__icon" aria-hidden="true">🗒️</span>
+          <span class="nav__label">Notes & Certs</span>
+        </button>
+        <button class="nav__item" data-view="reflection">
+          <span class="nav__icon" aria-hidden="true">🧠</span>
+          <span class="nav__label">Weekly Reflection</span>
+        </button>
+      </nav>
+
+      <div class="sidebar__footer">
+        <div class="mini">
+          <div class="mini__title">Data</div>
+          <div class="mini__row">
+            <button class="btn btn--ghost" id="btnExport">Export</button>
+            <label class="btn btn--ghost" for="importFile" role="button">Import</label>
+            <input id="importFile" type="file" accept="application/json" hidden />
+          </div>
+          <button class="btn btn--danger" id="btnReset">Reset Everything</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 class="title" id="viewTitle">Dashboard</h1>
+          <p class="subtitle" id="viewSubtitle">Your real-life skill tree.</p>
+        </div>
+
+        <div class="topbar__right">
+          <div class="pill" id="pillSummary">Loading…</div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <!-- DASHBOARD -->
+        <section class="view is-active" id="view-dashboard">
+          <div class="grid2">
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">Top Skills</h2>
+                <p class="card__desc">Highest progress right now.</p>
+              </div>
+              <div class="card__body" id="dashTopSkills"></div>
+            </div>
+
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">This Week</h2>
+                <p class="card__desc">Quick snapshot.</p>
+              </div>
+              <div class="card__body">
+                <div class="statrow" id="dashStats"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card__head">
+              <h2 class="card__title">Recent Projects</h2>
+              <p class="card__desc">Latest things you’ve completed or started.</p>
+            </div>
+            <div class="card__body">
+              <div class="list" id="dashRecentProjects"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SKILLS -->
+        <section class="view" id="view-skills">
+          <div class="grid2">
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">Add Skill</h2>
+                <p class="card__desc">Track a skill with a progress bar.</p>
+              </div>
+              <div class="card__body">
+                <form class="form" id="skillForm">
+                  <div class="field">
+                    <label for="skillName">Skill name</label>
+                    <input id="skillName" type="text" placeholder="e.g. SQL, PySpark, Power BI" required />
+                  </div>
+
+                  <div class="field">
+                    <label for="skillCategory">Category</label>
+                    <select id="skillCategory">
+                      <option>Data Science</option>
+                      <option>Python</option>
+                      <option>Machine Learning</option>
+                      <option>Power BI</option>
+                      <option>University</option>
+                      <option>Side Projects</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+
+                  <div class="field">
+                    <label for="skillProgress">Progress (0–100)</label>
+                    <input id="skillProgress" type="number" min="0" max="100" value="10" />
+                  </div>
+
+                  <div class="field">
+                    <label for="skillGoal">Goal / Why</label>
+                    <input id="skillGoal" type="text" placeholder="e.g. become confident writing joins + window functions" />
+                  </div>
+
+                  <button class="btn" type="submit">Add Skill</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">Skills</h2>
+                <p class="card__desc">Update progress as you go.</p>
+              </div>
+              <div class="card__body">
+                <div class="filters">
+                  <input id="skillSearch" type="text" placeholder="Search skills…" />
+                  <select id="skillFilter">
+                    <option value="all">All categories</option>
+                    <option value="Data Science">Data Science</option>
+                    <option value="Python">Python</option>
+                    <option value="Machine Learning">Machine Learning</option>
+                    <option value="Power BI">Power BI</option>
+                    <option value="University">University</option>
+                    <option value="Side Projects">Side Projects</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="list" id="skillsList"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PROJECTS -->
+        <section class="view" id="view-projects">
+          <div class="grid2">
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">Log Project</h2>
+                <p class="card__desc">Track projects and what you learned.</p>
+              </div>
+              <div class="card__body">
+                <form class="form" id="projectForm">
+                  <div class="field">
+                    <label for="projName">Project name</label>
+                    <input id="projName" type="text" placeholder="e.g. Fish stock import notebook" required />
+                  </div>
+
+                  <div class="field">
+                    <label for="projType">Type</label>
+                    <select id="projType">
+                      <option>University</option>
+                      <option>Work</option>
+                      <option>Personal</option>
+                      <option>Portfolio</option>
+                    </select>
+                  </div>
+
+                  <div class="field">
+                    <label for="projSkills">Skills used (comma separated)</label>
+                    <input id="projSkills" type="text" placeholder="e.g. Python, SQL, Pandas" />
+                  </div>
+
+                  <div class="field">
+                    <label for="projKsbs">KSB tags (comma separated)</label>
+                    <input id="projKsbs" type="text" placeholder="e.g. B1, B5, S2" />
+                  </div>
+
+                  <div class="field">
+                    <label for="projLearned">What did you learn?</label>
+                    <textarea id="projLearned" rows="4" placeholder="Key takeaways, gotchas, wins…"></textarea>
+                  </div>
+
+                  <div class="field">
+                    <label for="projStatus">Status</label>
+                    <select id="projStatus">
+                      <option>In progress</option>
+                      <option>Completed</option>
+                      <option>Paused</option>
+                    </select>
+                  </div>
+
+                  <button class="btn" type="submit">Add Project</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">Projects</h2>
+                <p class="card__desc">Your learning output log.</p>
+              </div>
+              <div class="card__body">
+                <div class="filters">
+                  <input id="projectSearch" type="text" placeholder="Search projects…" />
+                  <select id="projectFilter">
+                    <option value="all">All types</option>
+                    <option value="University">University</option>
+                    <option value="Work">Work</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Portfolio">Portfolio</option>
+                  </select>
+                </div>
+
+                <div class="list" id="projectsList"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- KSB -->
+        <section class="view" id="view-ksb">
+          <div class="grid2">
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">Your KSB Library</h2>
+                <p class="card__desc">Add the KSBs you want to map to.</p>
+              </div>
+              <div class="card__body">
+                <form class="form" id="ksbForm">
+                  <div class="field">
+                    <label for="ksbCode">KSB code</label>
+                    <input id="ksbCode" type="text" placeholder="e.g. B1, B5, S2" required />
+                  </div>
+                  <div class="field">
+                    <label for="ksbText">Description</label>
+                    <textarea id="ksbText" rows="4" placeholder="Paste your KSB wording here…" required></textarea>
+                  </div>
+                  <button class="btn" type="submit">Add KSB</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">KSB Evidence Log</h2>
+                <p class="card__desc">Record tasks or evidence and tag KSBs.</p>
+              </div>
+              <div class="card__body">
+                <form class="form" id="evidenceForm">
+                  <div class="field">
+                    <label for="evTitle">Evidence title</label>
+                    <input id="evTitle" type="text" placeholder="e.g. Built a clean ETL pipeline in PySpark" required />
+                  </div>
+                  <div class="field">
+                    <label for="evKsbs">KSB tags (comma separated)</label>
+                    <input id="evKsbs" type="text" placeholder="e.g. B1, B3, S4" />
+                  </div>
+                  <div class="field">
+                    <label for="evNotes">Notes</label>
+                    <textarea id="evNotes" rows="4" placeholder="What you did, impact, what you learned…"></textarea>
+                  </div>
+                  <button class="btn" type="submit">Add Evidence</button>
+                </form>
+
+                <div class="divider"></div>
+
+                <div class="filters">
+                  <input id="evidenceSearch" type="text" placeholder="Search evidence…" />
+                </div>
+                <div class="list" id="evidenceList"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card__head">
+              <h2 class="card__title">KSB Overview</h2>
+              <p class="card__desc">Which KSBs are you actively proving?</p>
+            </div>
+            <div class="card__body">
+              <div class="list" id="ksbList"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- NOTES -->
+        <section class="view" id="view-notes">
+          <div class="grid2">
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">Add Note / Certificate</h2>
+                <p class="card__desc">Store key concepts + links to certs.</p>
+              </div>
+              <div class="card__body">
+                <form class="form" id="noteForm">
+                  <div class="field">
+                    <label for="noteTitle">Title</label>
+                    <input id="noteTitle" type="text" placeholder="e.g. Random Forest key concepts" required />
+                  </div>
+                  <div class="field">
+                    <label for="noteTags">Tags (comma separated)</label>
+                    <input id="noteTags" type="text" placeholder="e.g. ML, Trees, Interview" />
+                  </div>
+                  <div class="field">
+                    <label for="noteLink">Link (optional)</label>
+                    <input id="noteLink" type="url" placeholder="https://..." />
+                  </div>
+                  <div class="field">
+                    <label for="noteBody">Content</label>
+                    <textarea id="noteBody" rows="6" placeholder="Write your notes here…"></textarea>
+                  </div>
+                  <button class="btn" type="submit">Add Note</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">Notes & Certificates</h2>
+                <p class="card__desc">Searchable knowledge bank.</p>
+              </div>
+              <div class="card__body">
+                <div class="filters">
+                  <input id="noteSearch" type="text" placeholder="Search notes…" />
+                </div>
+                <div class="list" id="notesList"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- REFLECTION -->
+        <section class="view" id="view-reflection">
+          <div class="card">
+            <div class="card__head">
+              <h2 class="card__title">Weekly Reflection</h2>
+              <p class="card__desc">What did you learn this week?</p>
+            </div>
+            <div class="card__body">
+              <form class="form" id="reflectionForm">
+                <div class="field">
+                  <label for="refWeek">Week label</label>
+                  <input id="refWeek" type="text" placeholder="e.g. Week of 2026-01-26" />
+                </div>
+                <div class="field">
+                  <label for="refLearned">What did you learn?</label>
+                  <textarea id="refLearned" rows="6" placeholder="Bullet points are fine…"></textarea>
+                </div>
+                <div class="field">
+                  <label for="refNext">What’s next?</label>
+                  <textarea id="refNext" rows="4" placeholder="Next week’s focus…"></textarea>
+                </div>
+                <button class="btn" type="submit">Save Reflection</button>
+              </form>
+
+              <div class="divider"></div>
+
+              <div class="list" id="reflectionList"></div>
+            </div>
+          </div>
+        </section>
+
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
