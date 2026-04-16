@@ -538,19 +538,15 @@ function renderSkillPrerequisiteOptions() {
   const select = $("skillPrerequisite");
   if (!select) return;
 
-  const currentValue = select.value || "";
+  select.innerHTML = `<option value="">None</option>`;
 
-  const options = ['<option value="">None</option>']
-    .concat(
-      state.skills.map((skill) => `<option value="${skill.id}">${escapeHtml(skill.name)}</option>`)
-    )
-    .join("");
-
-  select.innerHTML = options;
-
-  if ([...select.options].some((opt) => opt.value === currentValue)) {
-    select.value = currentValue;
-  }
+  state.skills.forEach((skill) => {
+    select.innerHTML += `
+      <option value="${skill.id}">
+        ${escapeHtml(skill.name)}
+      </option>
+    `;
+  });
 }
 
   function renderSessions() {
@@ -647,6 +643,7 @@ function getSkillLockReason(skill) {
   });
 
   saveState();
+  renderSkillPrerequisiteOptions();
 }
 
   function renderProjects() {
