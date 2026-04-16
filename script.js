@@ -38,14 +38,15 @@
     return d.toLocaleDateString();
   }
 
-  const DEFAULT_STATE = {
-    skills: [],
-    projects: [],
-    ksbLibrary: [],
-    evidence: [],
-    notes: [],
-    reflections: []
-  };
+const DEFAULT_STATE = {
+  skills: [],
+  projects: [],
+  ksbLibrary: [],
+  evidence: [],
+  notes: [],
+  reflections: [],
+  learningSessions: []
+};
 
   let state = loadState();
 
@@ -83,14 +84,15 @@
 
       const parsed = JSON.parse(raw);
 
-      return {
-        skills: Array.isArray(parsed.skills) ? parsed.skills : [],
-        projects: Array.isArray(parsed.projects) ? parsed.projects : [],
-        ksbLibrary: Array.isArray(parsed.ksbLibrary) ? parsed.ksbLibrary : [],
-        evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
-        notes: Array.isArray(parsed.notes) ? parsed.notes : [],
-        reflections: Array.isArray(parsed.reflections) ? parsed.reflections : []
-      };
+   return {
+  skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+  projects: Array.isArray(parsed.projects) ? parsed.projects : [],
+  ksbLibrary: Array.isArray(parsed.ksbLibrary) ? parsed.ksbLibrary : [],
+  evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
+  notes: Array.isArray(parsed.notes) ? parsed.notes : [],
+  reflections: Array.isArray(parsed.reflections) ? parsed.reflections : [],
+  learningSessions: Array.isArray(parsed.learningSessions) ? parsed.learningSessions : []
+};
     } catch (error) {
       console.error("Could not load saved data:", error);
       return structuredClone(DEFAULT_STATE);
@@ -177,6 +179,29 @@ function renderDashboard() {
   } else {
     topSkillsEl.innerHTML = `<div class="empty-state">No skills added yet.</div>`;
   }
+
+function calculateXP(minutes, difficulty) {
+  const mins = Number(minutes) || 0;
+  const base = Math.max(5, Math.round(mins / 2));
+
+  const difficultyMultiplier = {
+    easy: 1,
+    medium: 1.25,
+    hard: 1.5
+  };
+
+  return Math.round(base * (difficultyMultiplier[difficulty] || 1));
+}
+
+function getLevelFromXP(xp) {
+  const value = Number(xp) || 0;
+  return Math.floor(value / 100) + 1;
+}
+
+function ensureSkillXPFields(skill) {
+  if (typeof skill.xp !== "number") skill.xp = 0;
+  if (typeof skill.level !== "number") skill.level = getLevelFromXP(skill.xp);
+}
 
   const avgProgress = state.skills.length
     ? Math.round(
@@ -286,54 +311,67 @@ function renderDashboard() {
   `;
 }
 
-  function renderSkills() {
-    const q = safeTrim($("skillSearch").value).toLowerCase();
-    const filter = $("skillFilter").value;
+ function renderSkills() {
+  const q = safeTrim($("skillSearch").value).toLowerCase();
+  const filter = $("skillFilter").value;
 
-    const rows = [...state.skills]
-      .filter((skill) => filter === "all" ? true : skill.category === filter)
-      .filter((skill) => {
-        const haystack = `${skill.name} ${skill.category} ${skill.goal || ""}`.toLowerCase();
-        return !q || haystack.includes(q);
-      })
-      .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
+  const rows = [...state.skills]
+    .map((skill) => {
+      ensureSkillXPFields(skill);
+      return skill;
+    })
+    .filter((skill) => filter === "all" ? true : skill.category === filter)
+    .filter((skill) => {
+      const haystack = `${skill.name} ${skill.category} ${skill.goal || ""}`.toLowerCase();
+      return !q || haystack.includes(q);
+    })
+    .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
 
-    const listEl = $("skillsList");
+  const listEl = $("skillsList");
 
-    if (!rows.length) {
-      listEl.innerHTML = `<div class="empty-state">No matching skills yet.</div>`;
-      return;
-    }
+  if (!rows.length) {
+    listEl.innerHTML = `<div class="empty-state">No matching skills yet.</div>`;
+    renderSessionSkillOptions();
+    renderSessions();
+    return;
+  }
 
-    listEl.innerHTML = rows.map((skill) => `
-      <div class="item">
-        <div class="item__top">
-          <div>
-            <p class="item__title">${escapeHtml(skill.name)}</p>
-            <p class="item__meta">${escapeHtml(skill.category)} • ${escapeHtml(skill.goal || "No goal set")}</p>
-          </div>
-          <div class="actions">
-            <button class="iconbtn" data-skill-dec="${skill.id}" title="Decrease progress">−5</button>
-            <button class="iconbtn" data-skill-inc="${skill.id}" title="Increase progress">+5</button>
-            <button class="iconbtn" data-skill-del="${skill.id}" title="Delete skill">🗑️</button>
+  listEl.innerHTML = rows.map((skill) => `
+    <div class="item">
+      <div class="item__top">
+        <div>
+          <p class="item__title">${escapeHtml(skill.name)}</p>
+          <p class="item__meta">${escapeHtml(skill.category)} • ${escapeHtml(skill.goal || "No goal set")}</p>
+          <div class="tags">
+            <span class="tag">Level ${skill.level}</span>
+            <span class="tag">${skill.xp} XP</span>
           </div>
         </div>
-        ${renderProgressBar(skill.progress)}
+        <div class="actions">
+          <button class="iconbtn" data-skill-dec="${skill.id}" title="Decrease progress">−5</button>
+          <button class="iconbtn" data-skill-inc="${skill.id}" title="Increase progress">+5</button>
+          <button class="iconbtn" data-skill-del="${skill.id}" title="Delete skill">🗑️</button>
+        </div>
       </div>
-    `).join("");
+      ${renderProgressBar(skill.progress)}
+    </div>
+  `).join("");
 
-    document.querySelectorAll("[data-skill-inc]").forEach((btn) => {
-      btn.addEventListener("click", () => adjustSkill(btn.dataset.skillInc, 5));
-    });
+  document.querySelectorAll("[data-skill-inc]").forEach((btn) => {
+    btn.addEventListener("click", () => adjustSkill(btn.dataset.skillInc, 5));
+  });
 
-    document.querySelectorAll("[data-skill-dec]").forEach((btn) => {
-      btn.addEventListener("click", () => adjustSkill(btn.dataset.skillDec, -5));
-    });
+  document.querySelectorAll("[data-skill-dec]").forEach((btn) => {
+    btn.addEventListener("click", () => adjustSkill(btn.dataset.skillDec, -5));
+  });
 
-    document.querySelectorAll("[data-skill-del]").forEach((btn) => {
-      btn.addEventListener("click", () => deleteSkill(btn.dataset.skillDel));
-    });
-  }
+  document.querySelectorAll("[data-skill-del]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteSkill(btn.dataset.skillDel));
+  });
+
+  renderSessionSkillOptions();
+  renderSessions();
+}
 
   function adjustSkill(id, delta) {
     const skill = state.skills.find((s) => s.id === id);
@@ -346,6 +384,77 @@ function renderDashboard() {
     state.skills = state.skills.filter((s) => s.id !== id);
     saveState();
   }
+
+function renderSessionSkillOptions() {
+  const select = $("sessionSkill");
+  if (!select) return;
+
+  if (!state.skills.length) {
+    select.innerHTML = `<option value="">Add a skill first</option>`;
+    select.disabled = true;
+    return;
+  }
+
+  select.disabled = false;
+  select.innerHTML = state.skills
+    .map((skill) => `<option value="${skill.id}">${escapeHtml(skill.name)}</option>`)
+    .join("");
+}
+
+function renderSessions() {
+  const listEl = $("sessionList");
+  if (!listEl) return;
+
+  const rows = [...state.learningSessions].sort(newestFirst).slice(0, 8);
+
+  if (!rows.length) {
+    listEl.innerHTML = `<div class="empty-state">No learning sessions logged yet.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = rows.map((session) => `
+    <div class="item">
+      <div class="item__top">
+        <div>
+          <p class="item__title">${escapeHtml(session.skillName)}</p>
+          <p class="item__meta">${escapeHtml(session.date)} • ${session.minutes} mins • ${escapeHtml(session.difficulty)}</p>
+        </div>
+        <div class="tags">
+          <span class="tag">+${session.xpEarned} XP</span>
+        </div>
+      </div>
+      ${session.notes ? `<p class="item__meta">${escapeHtml(session.notes)}</p>` : ""}
+    </div>
+  `).join("");
+}
+
+function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
+  const skill = state.skills.find((s) => s.id === skillId);
+  if (!skill) return;
+
+  ensureSkillXPFields(skill);
+
+  const xpEarned = calculateXP(minutes, difficulty);
+  skill.xp += xpEarned;
+  skill.level = getLevelFromXP(skill.xp);
+
+  const progressGain = Math.max(1, Math.round(xpEarned / 20));
+  skill.progress = Math.min(100, (Number(skill.progress) || 0) + progressGain);
+
+  state.learningSessions.unshift({
+    id: uid("session"),
+    skillId,
+    skillName: skill.name,
+    date,
+    minutes: Number(minutes),
+    difficulty,
+    notes,
+    xpEarned,
+    createdAt: nowISO()
+  });
+
+  saveState();
+}
 
   function renderProjects() {
     const q = safeTrim($("projectSearch").value).toLowerCase();
@@ -598,14 +707,15 @@ function renderDashboard() {
       try {
         const parsed = JSON.parse(event.target.result);
 
-        state = {
-          skills: Array.isArray(parsed.skills) ? parsed.skills : [],
-          projects: Array.isArray(parsed.projects) ? parsed.projects : [],
-          ksbLibrary: Array.isArray(parsed.ksbLibrary) ? parsed.ksbLibrary : [],
-          evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
-          notes: Array.isArray(parsed.notes) ? parsed.notes : [],
-          reflections: Array.isArray(parsed.reflections) ? parsed.reflections : []
-        };
+  state = {
+  skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+  projects: Array.isArray(parsed.projects) ? parsed.projects : [],
+  ksbLibrary: Array.isArray(parsed.ksbLibrary) ? parsed.ksbLibrary : [],
+  evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
+  notes: Array.isArray(parsed.notes) ? parsed.notes : [],
+  reflections: Array.isArray(parsed.reflections) ? parsed.reflections : [],
+  learningSessions: Array.isArray(parsed.learningSessions) ? parsed.learningSessions : []
+};
 
         saveState();
         alert("Import complete.");
@@ -639,14 +749,16 @@ function renderDashboard() {
       const progress = Math.max(0, Math.min(100, Number($("skillProgress").value) || 0));
       const goal = safeTrim($("skillGoal").value);
 
-      state.skills.unshift({
-        id: uid("skill"),
-        name,
-        category,
-        progress,
-        goal,
-        createdAt: nowISO()
-      });
+  state.skills.unshift({
+  id: uid("skill"),
+  name,
+  category,
+  progress,
+  goal,
+  xp: 0,
+  level: 1,
+  createdAt: nowISO()
+});
 
       event.target.reset();
       $("skillProgress").value = 10;
@@ -655,6 +767,35 @@ function renderDashboard() {
 
     $("projectForm").addEventListener("submit", (event) => {
       event.preventDefault();
+
+      $("sessionForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const skillId = $("sessionSkill").value;
+  const date = $("sessionDate").value;
+  const minutes = $("sessionMinutes").value;
+  const difficulty = $("sessionDifficulty").value;
+  const notes = safeTrim($("sessionNotes").value);
+
+  if (!skillId) {
+    alert("Please add a skill first.");
+    return;
+  }
+
+  logLearningSession({
+    skillId,
+    date,
+    minutes,
+    difficulty,
+    notes
+  });
+
+  event.target.reset();
+  $("sessionMinutes").value = 30;
+  $("sessionDifficulty").value = "medium";
+  $("sessionDate").value = new Date().toISOString().split("T")[0];
+  renderSessionSkillOptions();
+});
 
       const name = safeTrim($("projName").value);
       const type = $("projType").value;
