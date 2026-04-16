@@ -126,6 +126,11 @@
     return Math.floor(value / 100) + 1;
   }
 
+  function ensureSkillDependencyFields(skill) {
+  if (!skill.prerequisiteSkillId) skill.prerequisiteSkillId = "";
+  if (typeof skill.unlockAt !== "number") skill.unlockAt = 40;
+}
+
   function ensureSkillXPFields(skill) {
     if (typeof skill.xp !== "number") skill.xp = 0;
     if (typeof skill.level !== "number") skill.level = getLevelFromXP(skill.xp);
