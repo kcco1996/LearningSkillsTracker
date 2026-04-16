@@ -543,6 +543,78 @@
     renderSkillPrerequisiteOptions();
   }
 
+  function renderSkillTree() {
+  const treeEl = $("skillTree");
+  if (!treeEl) return;
+
+  const rows = [...state.skills].map((skill) => {
+    ensureSkillXPFields(skill);
+    ensureSkillDependencyFields(skill);
+    return skill;
+  });
+
+  if (!rows.length) {
+    treeEl.innerHTML = `<div class="empty-state">No skills in the tree yet.</div>`;
+    return;
+  }
+
+  const roots = rows.filter((skill) => !skill.prerequisiteSkillId);
+  const dependents = rows.filter((skill) => skill.prerequisiteSkillId);
+
+  const ordered = [...roots];
+
+  roots.forEach((root) => {
+    const children = dependents.filter((skill) => skill.prerequisiteSkillId === root.id);
+    ordered.push(...children);
+
+    children.forEach((child) => {
+      const grandchildren = dependents.filter((skill) => skill.prerequisiteSkillId === child.id);
+      ordered.push(...grandchildren);
+    });
+  });
+
+  // add any missed skills just in case
+  rows.forEach((skill) => {
+    if (!ordered.find((x) => x.id === skill.id)) {
+      ordered.push(skill);
+    }
+  });
+
+  treeEl.innerHTML = ordered.map((skill) => {
+    const unlocked = isSkillUnlocked(skill);
+    const prerequisite = getSkillById(skill.prerequisiteSkillId);
+    const isRoot = !skill.prerequisiteSkillId;
+
+    return `
+      <div class="tree-node ${unlocked ? "tree-node--unlocked" : "tree-node--locked"} ${isRoot ? "tree-node--root" : "tree-node--child"}">
+        <div class="tree-node__header">
+          <div>
+            <h3 class="tree-node__title">${escapeHtml(skill.name)}</h3>
+            <p class="tree-node__category">${escapeHtml(skill.category || "Other")}</p>
+          </div>
+          <span class="tree-node__status ${unlocked ? "tree-node__status--on" : "tree-node__status--off"}">
+            ${unlocked ? "Unlocked" : "Locked"}
+          </span>
+        </div>
+
+        <div class="tree-node__meta">
+          <span class="tag">Level ${skill.level}</span>
+          <span class="tag">${skill.xp} XP</span>
+          <span class="tag">${Number(skill.progress) || 0}%</span>
+        </div>
+
+        ${renderProgressBar(skill.progress)}
+
+        ${
+          prerequisite
+            ? `<p class="tree-node__dependency">${escapeHtml(getSkillLockReason(skill))}</p>`
+            : `<p class="tree-node__dependency">Base skill</p>`
+        }
+      </div>
+    `;
+  }).join("");
+}
+
   function adjustSkill(id, delta) {
     const skill = state.skills.find((s) => s.id === id);
     if (!skill) return;
@@ -1132,17 +1204,18 @@
     $("btnReset")?.addEventListener("click", resetEverything);
   }
 
-  function renderAll() {
-    renderSummary();
-    renderDashboard();
-    renderSkills();
-    renderProjects();
-    renderKSB();
-    renderNotes();
-    renderReflections();
-    renderSessions();
-    renderSkillPrerequisiteOptions();
-  }
+function renderAll() {
+  renderSummary();
+  renderDashboard();
+  renderSkills();
+  renderSkillTree();
+  renderProjects();
+  renderKSB();
+  renderNotes();
+  renderReflections();
+  renderSessions();
+  renderSkillPrerequisiteOptions();
+}
 
   function init() {
     bindNavigation();
