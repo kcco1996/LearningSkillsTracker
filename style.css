@@ -473,3 +473,18 @@ input:focus, select:focus, textarea:focus{
 #sessionList .item:last-child {
   margin-bottom: 0;
 }
+
+.item--locked {
+  opacity: 0.78;
+  border-style: dashed;
+}
+
+.tag--locked {
+  background: rgba(255, 120, 120, 0.14);
+  border-color: rgba(255, 120, 120, 0.35);
+}
+
+.tag--success {
+  background: rgba(100, 255, 160, 0.14);
+  border-color: rgba(100, 255, 160, 0.35);
+}
