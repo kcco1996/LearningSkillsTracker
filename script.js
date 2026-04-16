@@ -421,42 +421,61 @@
   }
 
   function renderSkills() {
-    const q = safeTrim($("skillSearch")?.value).toLowerCase();
-    const filter = $("skillFilter")?.value || "all";
+  const q = safeTrim($("skillSearch")?.value).toLowerCase();
+  const filter = $("skillFilter")?.value || "all";
 
-    const rows = [...state.skills]
-      .map((skill) => {
-        ensureSkillXPFields(skill);
-        return skill;
-      })
-      .filter((skill) => filter === "all" ? true : skill.category === filter)
-      .filter((skill) => {
-        const haystack = `${skill.name} ${skill.category} ${skill.goal || ""}`.toLowerCase();
-        return !q || haystack.includes(q);
-      })
-      .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
+  const rows = [...state.skills]
+    .map((skill) => {
+      ensureSkillXPFields(skill);
+      ensureSkillDependencyFields(skill);
+      return skill;
+    })
+    .filter((skill) => filter === "all" ? true : skill.category === filter)
+    .filter((skill) => {
+      const prerequisite = getSkillById(skill.prerequisiteSkillId);
+      const haystack = `
+        ${skill.name}
+        ${skill.category}
+        ${skill.goal || ""}
+        ${prerequisite?.name || ""}
+        ${getSkillLockReason(skill)}
+      `.toLowerCase();
 
-    const listEl = $("skillsList");
-    if (!listEl) return;
+      return !q || haystack.includes(q);
+    })
+    .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
 
-    if (!rows.length) {
-      listEl.innerHTML = `<div class="empty-state">No matching skills yet.</div>`;
-      renderSessionSkillOptions();
-      renderSessions();
-      return;
-    }
+  const listEl = $("skillsList");
+  if (!listEl) return;
 
-    listEl.innerHTML = rows.map((skill) => `
-      <div class="item">
+  if (!rows.length) {
+    listEl.innerHTML = `<div class="empty-state">No matching skills yet.</div>`;
+    renderSessionSkillOptions();
+    renderSessions();
+    renderSkillPrerequisiteOptions();
+    return;
+  }
+
+  listEl.innerHTML = rows.map((skill) => {
+    const unlocked = isSkillUnlocked(skill);
+    const prerequisite = getSkillById(skill.prerequisiteSkillId);
+
+    return `
+      <div class="item ${unlocked ? "" : "item--locked"}">
         <div class="item__top">
           <div>
             <p class="item__title">${escapeHtml(skill.name)}</p>
             <p class="item__meta">${escapeHtml(skill.category)} • ${escapeHtml(skill.goal || "No goal set")}</p>
+
             <div class="tags">
               <span class="tag">Level ${skill.level}</span>
               <span class="tag">${skill.xp} XP</span>
+              <span class="tag ${unlocked ? "tag--success" : "tag--locked"}">${unlocked ? "Unlocked" : "Locked"}</span>
             </div>
+
+            ${prerequisite ? `<p class="item__meta">${escapeHtml(getSkillLockReason(skill))}</p>` : ""}
           </div>
+
           <div class="actions">
             <button class="iconbtn" data-skill-dec="${skill.id}" title="Decrease progress">−5</button>
             <button class="iconbtn" data-skill-inc="${skill.id}" title="Increase progress">+5</button>
@@ -465,23 +484,25 @@
         </div>
         ${renderProgressBar(skill.progress)}
       </div>
-    `).join("");
+    `;
+  }).join("");
 
-    document.querySelectorAll("[data-skill-inc]").forEach((btn) => {
-      btn.addEventListener("click", () => adjustSkill(btn.dataset.skillInc, 5));
-    });
+  document.querySelectorAll("[data-skill-inc]").forEach((btn) => {
+    btn.addEventListener("click", () => adjustSkill(btn.dataset.skillInc, 5));
+  });
 
-    document.querySelectorAll("[data-skill-dec]").forEach((btn) => {
-      btn.addEventListener("click", () => adjustSkill(btn.dataset.skillDec, -5));
-    });
+  document.querySelectorAll("[data-skill-dec]").forEach((btn) => {
+    btn.addEventListener("click", () => adjustSkill(btn.dataset.skillDec, -5));
+  });
 
-    document.querySelectorAll("[data-skill-del]").forEach((btn) => {
-      btn.addEventListener("click", () => deleteSkill(btn.dataset.skillDel));
-    });
+  document.querySelectorAll("[data-skill-del]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteSkill(btn.dataset.skillDel));
+  });
 
-    renderSessionSkillOptions();
-    renderSessions();
-  }
+  renderSessionSkillOptions();
+  renderSessions();
+  renderSkillPrerequisiteOptions();
+}
 
   function adjustSkill(id, delta) {
     const skill = state.skills.find((s) => s.id === id);
@@ -495,21 +516,42 @@
     saveState();
   }
 
-  function renderSessionSkillOptions() {
-    const select = $("sessionSkill");
-    if (!select) return;
+function renderSessionSkillOptions() {
+  const select = $("sessionSkill");
+  if (!select) return;
 
-    if (!state.skills.length) {
-      select.innerHTML = `<option value="">Add a skill first</option>`;
-      select.disabled = true;
-      return;
-    }
+  const unlockedSkills = state.skills.filter((skill) => isSkillUnlocked(skill));
 
-    select.disabled = false;
-    select.innerHTML = state.skills
-      .map((skill) => `<option value="${skill.id}">${escapeHtml(skill.name)}</option>`)
-      .join("");
+  if (!unlockedSkills.length) {
+    select.innerHTML = `<option value="">Add or unlock a skill first</option>`;
+    select.disabled = true;
+    return;
   }
+
+  select.disabled = false;
+  select.innerHTML = unlockedSkills
+    .map((skill) => `<option value="${skill.id}">${escapeHtml(skill.name)}</option>`)
+    .join("");
+}
+
+function renderSkillPrerequisiteOptions() {
+  const select = $("skillPrerequisite");
+  if (!select) return;
+
+  const currentValue = select.value || "";
+
+  const options = ['<option value="">None</option>']
+    .concat(
+      state.skills.map((skill) => `<option value="${skill.id}">${escapeHtml(skill.name)}</option>`)
+    )
+    .join("");
+
+  select.innerHTML = options;
+
+  if ([...select.options].some((opt) => opt.value === currentValue)) {
+    select.value = currentValue;
+  }
+}
 
   function renderSessions() {
     const listEl = $("sessionList");
@@ -538,33 +580,74 @@
     `).join("");
   }
 
-  function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
-    const skill = state.skills.find((s) => s.id === skillId);
-    if (!skill) return;
+function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
+  const skill = state.skills.find((s) => s.id === skillId);
+  if (!skill) return;
 
-    ensureSkillXPFields(skill);
+  ensureSkillXPFields(skill);
+  ensureSkillDependencyFields(skill);
 
-    const xpEarned = calculateXP(minutes, difficulty);
-    skill.xp += xpEarned;
-    skill.level = getLevelFromXP(skill.xp);
-
-    const progressGain = Math.max(1, Math.round(xpEarned / 20));
-    skill.progress = Math.min(100, (Number(skill.progress) || 0) + progressGain);
-
-    state.learningSessions.unshift({
-      id: uid("session"),
-      skillId,
-      skillName: skill.name,
-      date,
-      minutes: Number(minutes),
-      difficulty,
-      notes,
-      xpEarned,
-      createdAt: nowISO()
-    });
-
-    saveState();
+  if (!isSkillUnlocked(skill)) {
+    alert(getSkillLockReason(skill));
+    return;
   }
+
+  function ensureSkillDependencyFields(skill) {
+  if (!("prerequisiteSkillId" in skill)) skill.prerequisiteSkillId = "";
+  if (!("unlockAt" in skill)) skill.unlockAt = 40;
+}
+
+function getSkillById(skillId) {
+  return state.skills.find((skill) => skill.id === skillId);
+}
+
+function isSkillUnlocked(skill) {
+  ensureSkillDependencyFields(skill);
+
+  if (!skill.prerequisiteSkillId) return true;
+
+  const prerequisite = getSkillById(skill.prerequisiteSkillId);
+  if (!prerequisite) return true;
+
+  return (Number(prerequisite.progress) || 0) >= (Number(skill.unlockAt) || 0);
+}
+
+function getSkillLockReason(skill) {
+  ensureSkillDependencyFields(skill);
+
+  if (!skill.prerequisiteSkillId) return "";
+
+  const prerequisite = getSkillById(skill.prerequisiteSkillId);
+  if (!prerequisite) return "";
+
+  if (isSkillUnlocked(skill)) {
+    return `Unlocked via ${prerequisite.name}`;
+  }
+
+  return `Requires ${prerequisite.name} at ${skill.unlockAt}%`;
+}
+
+  const xpEarned = calculateXP(minutes, difficulty);
+  skill.xp += xpEarned;
+  skill.level = getLevelFromXP(skill.xp);
+
+  const progressGain = Math.max(1, Math.round(xpEarned / 20));
+  skill.progress = Math.min(100, (Number(skill.progress) || 0) + progressGain);
+
+  state.learningSessions.unshift({
+    id: uid("session"),
+    skillId,
+    skillName: skill.name,
+    date,
+    minutes: Number(minutes),
+    difficulty,
+    notes,
+    xpEarned,
+    createdAt: nowISO()
+  });
+
+  saveState();
+}
 
   function renderProjects() {
     const q = safeTrim($("projectSearch")?.value).toLowerCase();
@@ -880,34 +963,35 @@
       saveState();
     });
 
-    $("sessionForm")?.addEventListener("submit", (event) => {
-      event.preventDefault();
+    $("skillForm")?.addEventListener("submit", (event) => {
+  event.preventDefault();
 
-      const skillId = $("sessionSkill").value;
-      const date = $("sessionDate").value;
-      const minutes = $("sessionMinutes").value;
-      const difficulty = $("sessionDifficulty").value;
-      const notes = safeTrim($("sessionNotes").value);
+  const name = safeTrim($("skillName").value);
+  const category = $("skillCategory").value;
+  const progress = Math.max(0, Math.min(100, Number($("skillProgress").value) || 0));
+  const goal = safeTrim($("skillGoal").value);
+  const prerequisiteSkillId = $("skillPrerequisite").value;
+  const unlockAt = Math.max(1, Math.min(100, Number($("skillUnlockAt").value) || 40));
 
-      if (!skillId) {
-        alert("Please add a skill first.");
-        return;
-      }
+  state.skills.unshift({
+    id: uid("skill"),
+    name,
+    category,
+    progress,
+    goal,
+    xp: 0,
+    level: 1,
+    prerequisiteSkillId,
+    unlockAt,
+    createdAt: nowISO()
+  });
 
-      logLearningSession({
-        skillId,
-        date,
-        minutes,
-        difficulty,
-        notes
-      });
-
-      event.target.reset();
-      $("sessionMinutes").value = 30;
-      $("sessionDifficulty").value = "medium";
-      $("sessionDate").value = new Date().toISOString().split("T")[0];
-      renderSessionSkillOptions();
-    });
+  event.target.reset();
+  $("skillProgress").value = 10;
+  $("skillUnlockAt").value = 40;
+  saveState();
+  renderSkillPrerequisiteOptions();
+});
 
     $("projectForm")?.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -1040,31 +1124,33 @@
     $("btnReset")?.addEventListener("click", resetEverything);
   }
 
-  function renderAll() {
-    renderSummary();
-    renderDashboard();
-    renderSkills();
-    renderProjects();
-    renderKSB();
-    renderNotes();
-    renderReflections();
-    renderSessions();
+function renderAll() {
+  renderSummary();
+  renderDashboard();
+  renderSkills();
+  renderProjects();
+  renderKSB();
+  renderNotes();
+  renderReflections();
+  renderSessions();
+  renderSkillPrerequisiteOptions();
+}
+
+function init() {
+  bindNavigation();
+  bindForms();
+  bindFilters();
+  bindDataButtons();
+  renderAll();
+  showView("dashboard");
+
+  if ($("sessionDate")) {
+    $("sessionDate").value = new Date().toISOString().split("T")[0];
   }
 
-  function init() {
-    bindNavigation();
-    bindForms();
-    bindFilters();
-    bindDataButtons();
-    renderAll();
-    showView("dashboard");
-
-    if ($("sessionDate")) {
-      $("sessionDate").value = new Date().toISOString().split("T")[0];
-    }
-
-    renderSessionSkillOptions();
-  }
+  renderSessionSkillOptions();
+  renderSkillPrerequisiteOptions();
+}
 
   init();
 })();

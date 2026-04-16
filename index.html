@@ -183,12 +183,24 @@
             <input id="skillProgress" type="number" min="0" max="100" value="10" />
           </div>
 
-          <div class="field">
-            <label for="skillGoal">Goal / Why</label>
-            <input id="skillGoal" type="text" placeholder="e.g. become confident writing joins + window functions" />
-          </div>
+        <div class="field">
+  <label for="skillGoal">Goal / Why</label>
+  <input id="skillGoal" type="text" placeholder="e.g. become confident writing joins + window functions" />
+</div>
 
-          <button class="btn" type="submit">Add Skill</button>
+<div class="field">
+  <label for="skillPrerequisite">Prerequisite skill (optional)</label>
+  <select id="skillPrerequisite">
+    <option value="">None</option>
+  </select>
+</div>
+
+<div class="field">
+  <label for="skillUnlockAt">Unlock when prerequisite reaches (%)</label>
+  <input id="skillUnlockAt" type="number" min="1" max="100" value="40" />
+</div>
+
+<button class="btn" type="submit">Add Skill</button>
         </form>
       </div>
     </div>
