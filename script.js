@@ -543,76 +543,145 @@
     renderSkillPrerequisiteOptions();
   }
 
-  function renderSkillTree() {
+function renderSkillTree() {
   const treeEl = $("skillTree");
   if (!treeEl) return;
 
-  const rows = [...state.skills].map((skill) => {
+  const skills = [...state.skills].map((skill) => {
     ensureSkillXPFields(skill);
     ensureSkillDependencyFields(skill);
     return skill;
   });
 
-  if (!rows.length) {
+  if (!skills.length) {
     treeEl.innerHTML = `<div class="empty-state">No skills in the tree yet.</div>`;
     return;
   }
 
-  const roots = rows.filter((skill) => !skill.prerequisiteSkillId);
-  const dependents = rows.filter((skill) => skill.prerequisiteSkillId);
+  const byParent = new Map();
+  const roots = [];
 
-  const ordered = [...roots];
-
-  roots.forEach((root) => {
-    const children = dependents.filter((skill) => skill.prerequisiteSkillId === root.id);
-    ordered.push(...children);
-
-    children.forEach((child) => {
-      const grandchildren = dependents.filter((skill) => skill.prerequisiteSkillId === child.id);
-      ordered.push(...grandchildren);
-    });
-  });
-
-  // add any missed skills just in case
-  rows.forEach((skill) => {
-    if (!ordered.find((x) => x.id === skill.id)) {
-      ordered.push(skill);
+  skills.forEach((skill) => {
+    const parentId = skill.prerequisiteSkillId || "";
+    if (!parentId) {
+      roots.push(skill);
+      return;
     }
+
+    if (!byParent.has(parentId)) {
+      byParent.set(parentId, []);
+    }
+    byParent.get(parentId).push(skill);
   });
 
-  treeEl.innerHTML = ordered.map((skill) => {
+  function renderNode(skill, depth = 0) {
     const unlocked = isSkillUnlocked(skill);
     const prerequisite = getSkillById(skill.prerequisiteSkillId);
-    const isRoot = !skill.prerequisiteSkillId;
+    const children = byParent.get(skill.id) || [];
 
     return `
-      <div class="tree-node ${unlocked ? "tree-node--unlocked" : "tree-node--locked"} ${isRoot ? "tree-node--root" : "tree-node--child"}">
-        <div class="tree-node__header">
-          <div>
-            <h3 class="tree-node__title">${escapeHtml(skill.name)}</h3>
-            <p class="tree-node__category">${escapeHtml(skill.category || "Other")}</p>
+      <div class="tree-branch tree-branch--depth-${Math.min(depth, 4)}">
+        <div class="tree-node ${unlocked ? "tree-node--unlocked" : "tree-node--locked"} ${!skill.prerequisiteSkillId ? "tree-node--root" : ""}">
+          <div class="tree-node__header">
+            <div>
+              <h3 class="tree-node__title">${escapeHtml(skill.name)}</h3>
+              <p class="tree-node__category">${escapeHtml(skill.category || "Other")}</p>
+            </div>
+            <span class="tree-node__status ${unlocked ? "tree-node__status--on" : "tree-node__status--off"}">
+              ${unlocked ? "Unlocked" : "Locked"}
+            </span>
           </div>
-          <span class="tree-node__status ${unlocked ? "tree-node__status--on" : "tree-node__status--off"}">
-            ${unlocked ? "Unlocked" : "Locked"}
-          </span>
-        </div>
 
-        <div class="tree-node__meta">
-          <span class="tag">Level ${skill.level}</span>
-          <span class="tag">${skill.xp} XP</span>
-          <span class="tag">${Number(skill.progress) || 0}%</span>
-        </div>
+          <div class="tree-node__meta">
+            <span class="tag">Level ${skill.level}</span>
+            <span class="tag">${skill.xp} XP</span>
+            <span class="tag">${Number(skill.progress) || 0}%</span>
+          </div>
 
-        ${renderProgressBar(skill.progress)}
+          ${renderProgressBar(skill.progress)}
+
+          <p class="tree-node__dependency">
+            ${
+              prerequisite
+                ? escapeHtml(getSkillLockReason(skill))
+                : "Base skill"
+            }
+          </p>
+        </div>
 
         ${
-          prerequisite
-            ? `<p class="tree-node__dependency">${escapeHtml(getSkillLockReason(skill))}</p>`
-            : `<p class="tree-node__dependency">Base skill</p>`
+          children.length
+            ? `<div class="tree-children">
+                ${children
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((child) => renderNode(child, depth + 1))
+                  .join("")}
+              </div>`
+            : ""
         }
       </div>
     `;
-  }).join("");
+  }
+
+  const renderedRoots = roots
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((root) => renderNode(root, 0))
+    .join("");
+
+  const orphaned = skills.filter(
+    (skill) =>
+      skill.prerequisiteSkillId &&
+      !skills.some((candidate) => candidate.id === skill.prerequisiteSkillId)
+  );
+
+  const renderedOrphans = orphaned.length
+    ? `
+      <div class="tree-orphans">
+        <h4 class="tree-orphans__title">Unlinked Skills</h4>
+        <div class="tree-orphans__grid">
+          ${orphaned
+            .map((skill) => {
+              const unlocked = isSkillUnlocked(skill);
+              return `
+                <div class="tree-node ${unlocked ? "tree-node--unlocked" : "tree-node--locked"}">
+                  <div class="tree-node__header">
+                    <div>
+                      <h3 class="tree-node__title">${escapeHtml(skill.name)}</h3>
+                      <p class="tree-node__category">${escapeHtml(skill.category || "Other")}</p>
+                    </div>
+                    <span class="tree-node__status ${unlocked ? "tree-node__status--on" : "tree-node__status--off"}">
+                      ${unlocked ? "Unlocked" : "Locked"}
+                    </span>
+                  </div>
+                  <div class="tree-node__meta">
+                    <span class="tag">Level ${skill.level}</span>
+                    <span class="tag">${skill.xp} XP</span>
+                    <span class="tag">${Number(skill.progress) || 0}%</span>
+                  </div>
+                  ${renderProgressBar(skill.progress)}
+                  <p class="tree-node__dependency">${escapeHtml(getSkillLockReason(skill))}</p>
+                </div>
+              `;
+            })
+            .join("")}
+        </div>
+      </div>
+    `
+    : "";
+
+  treeEl.innerHTML = `
+    <div class="skill-tree-wrap">
+      <div class="skill-tree-legend">
+        <span class="tag tag--success">Unlocked</span>
+        <span class="tag tag--locked">Locked</span>
+        <span class="tag">Level / XP / %</span>
+      </div>
+      <div class="skill-tree-flow">
+        ${renderedRoots || `<div class="empty-state">No base skills yet.</div>`}
+      </div>
+      ${renderedOrphans}
+    </div>
+  `;
 }
 
   function adjustSkill(id, delta) {

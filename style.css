@@ -489,10 +489,38 @@ input:focus, select:focus, textarea:focus{
   border-color: rgba(100, 255, 160, 0.35);
 }
 
-.skill-tree {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+.skill-tree-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.skill-tree-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skill-tree-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.tree-branch {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tree-children {
+  margin-left: 28px;
+  padding-left: 22px;
+  border-left: 2px dashed rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .tree-node {
@@ -501,18 +529,19 @@ input:focus, select:focus, textarea:focus{
   padding: 16px;
   background: rgba(255,255,255,0.04);
   position: relative;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tree-node:hover {
+  transform: translateY(-1px);
 }
 
 .tree-node--root {
   background: rgba(255,255,255,0.06);
 }
 
-.tree-node--child {
-  margin-left: 0;
-}
-
 .tree-node--locked {
-  opacity: 0.75;
+  opacity: 0.78;
   border-style: dashed;
 }
 
@@ -568,4 +597,31 @@ input:focus, select:focus, textarea:focus{
 .tree-node__status--off {
   background: rgba(255, 120, 120, 0.14);
   border-color: rgba(255, 120, 120, 0.35);
+}
+
+.tree-orphans {
+  margin-top: 8px;
+}
+
+.tree-orphans__title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.tree-orphans__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 700px) {
+  .tree-children {
+    margin-left: 12px;
+    padding-left: 14px;
+  }
+
+  .tree-node__header {
+    flex-direction: column;
+  }
 }
