@@ -31,24 +31,22 @@
       .replaceAll("'", "&#039;");
   }
 
-  function formatDate(iso) {
-    if (!iso) return "";
-    const d = new Date(iso);
+  function formatDate(value) {
+    if (!value) return "";
+    const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "";
     return d.toLocaleDateString();
   }
 
-const DEFAULT_STATE = {
-  skills: [],
-  projects: [],
-  ksbLibrary: [],
-  evidence: [],
-  notes: [],
-  reflections: [],
-  learningSessions: []
-};
-
-  let state = loadState();
+  const DEFAULT_STATE = {
+    skills: [],
+    projects: [],
+    ksbLibrary: [],
+    evidence: [],
+    notes: [],
+    reflections: [],
+    learningSessions: []
+  };
 
   const viewMeta = {
     dashboard: {
@@ -77,6 +75,8 @@ const DEFAULT_STATE = {
     }
   };
 
+  let state = loadState();
+
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -84,15 +84,15 @@ const DEFAULT_STATE = {
 
       const parsed = JSON.parse(raw);
 
-   return {
-  skills: Array.isArray(parsed.skills) ? parsed.skills : [],
-  projects: Array.isArray(parsed.projects) ? parsed.projects : [],
-  ksbLibrary: Array.isArray(parsed.ksbLibrary) ? parsed.ksbLibrary : [],
-  evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
-  notes: Array.isArray(parsed.notes) ? parsed.notes : [],
-  reflections: Array.isArray(parsed.reflections) ? parsed.reflections : [],
-  learningSessions: Array.isArray(parsed.learningSessions) ? parsed.learningSessions : []
-};
+      return {
+        skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+        projects: Array.isArray(parsed.projects) ? parsed.projects : [],
+        ksbLibrary: Array.isArray(parsed.ksbLibrary) ? parsed.ksbLibrary : [],
+        evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
+        notes: Array.isArray(parsed.notes) ? parsed.notes : [],
+        reflections: Array.isArray(parsed.reflections) ? parsed.reflections : [],
+        learningSessions: Array.isArray(parsed.learningSessions) ? parsed.learningSessions : []
+      };
     } catch (error) {
       console.error("Could not load saved data:", error);
       return structuredClone(DEFAULT_STATE);
@@ -104,9 +104,92 @@ const DEFAULT_STATE = {
     renderAll();
   }
 
+  function newestFirst(a, b) {
+    return (b.createdAt || "").localeCompare(a.createdAt || "");
+  }
+
+  function calculateXP(minutes, difficulty) {
+    const mins = Number(minutes) || 0;
+    const base = Math.max(5, Math.round(mins / 2));
+
+    const difficultyMultiplier = {
+      easy: 1,
+      medium: 1.25,
+      hard: 1.5
+    };
+
+    return Math.round(base * (difficultyMultiplier[difficulty] || 1));
+  }
+
+  function getLevelFromXP(xp) {
+    const value = Number(xp) || 0;
+    return Math.floor(value / 100) + 1;
+  }
+
+  function ensureSkillXPFields(skill) {
+    if (typeof skill.xp !== "number") skill.xp = 0;
+    if (typeof skill.level !== "number") skill.level = getLevelFromXP(skill.xp);
+  }
+
+  function normaliseDateString(value) {
+    if (!value) return null;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString().split("T")[0];
+  }
+
+  function calculateLearningStreak() {
+    if (!state.learningSessions.length) return 0;
+
+    const uniqueDates = [
+      ...new Set(
+        state.learningSessions
+          .map((session) => normaliseDateString(session.date || session.createdAt))
+          .filter(Boolean)
+      )
+    ].sort().reverse();
+
+    if (!uniqueDates.length) return 0;
+
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+    if (uniqueDates[0] !== todayStr && uniqueDates[0] !== yesterdayStr) {
+      return 0;
+    }
+
+    let streak = 1;
+    let prev = new Date(uniqueDates[0]);
+
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const current = new Date(uniqueDates[i]);
+      const diffDays = Math.round((prev - current) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        streak += 1;
+        prev = current;
+      } else if (diffDays === 0) {
+        continue;
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  }
+
+  function getTotalXP() {
+    return state.skills.reduce((sum, skill) => sum + (Number(skill.xp) || 0), 0);
+  }
+
   function renderSummary() {
-    const text = `${state.skills.length} skills • ${state.projects.length} projects • ${state.notes.length} notes`;
-    $("pillSummary").textContent = text;
+    const streak = calculateLearningStreak();
+    const totalXP = getTotalXP();
+    $("pillSummary").textContent = `${state.skills.length} skills • ${totalXP} XP • ${streak} day streak`;
   }
 
   function showView(viewName) {
@@ -149,229 +232,256 @@ const DEFAULT_STATE = {
     `;
   }
 
-  function newestFirst(a, b) {
-    return (b.createdAt || "").localeCompare(a.createdAt || "");
+  function renderDashboard() {
+    const topSkillsEl = $("dashTopSkills");
+    const dashStatsEl = $("dashStats");
+    const recentProjectsEl = $("dashRecentProjects");
+    const weakKsbsEl = $("dashWeakKsbs");
+    const nextStepEl = $("dashNextStep");
+    const recentLearningEl = $("dashRecentLearning");
+
+    const topSkills = [...state.skills]
+      .map((skill) => {
+        ensureSkillXPFields(skill);
+        return skill;
+      })
+      .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0))
+      .slice(0, 5);
+
+    if (topSkillsEl) {
+      if (topSkills.length) {
+        topSkillsEl.innerHTML = topSkills.map((skill) => `
+          <div class="item">
+            <div class="item__top">
+              <div>
+                <p class="item__title">${escapeHtml(skill.name)}</p>
+                <p class="item__meta">${escapeHtml(skill.category)} • ${escapeHtml(skill.goal || "No goal set")}</p>
+                <div class="tags">
+                  <span class="tag">Level ${skill.level}</span>
+                  <span class="tag">${skill.xp} XP</span>
+                </div>
+              </div>
+            </div>
+            ${renderProgressBar(skill.progress)}
+          </div>
+        `).join("");
+      } else {
+        topSkillsEl.innerHTML = `<div class="empty-state">No skills added yet.</div>`;
+      }
+    }
+
+    const avgProgress = state.skills.length
+      ? Math.round(
+          state.skills.reduce((sum, skill) => sum + (Number(skill.progress) || 0), 0) / state.skills.length
+        )
+      : 0;
+
+    const completedProjects = state.projects.filter((p) => p.status === "Completed").length;
+    const evidenceCount = state.evidence.length;
+    const streak = calculateLearningStreak();
+    const totalXP = getTotalXP();
+
+    if (dashStatsEl) {
+      dashStatsEl.innerHTML = `
+        <div class="stat">
+          <div class="stat__num">${avgProgress}%</div>
+          <div class="stat__label">Avg skill progress</div>
+        </div>
+        <div class="stat">
+          <div class="stat__num">${completedProjects}</div>
+          <div class="stat__label">Projects completed</div>
+        </div>
+        <div class="stat">
+          <div class="stat__num">${evidenceCount}</div>
+          <div class="stat__label">KSB evidence items</div>
+        </div>
+        <div class="stat">
+          <div class="stat__num">${totalXP}</div>
+          <div class="stat__label">Total XP</div>
+        </div>
+        <div class="stat">
+          <div class="stat__num">${streak}</div>
+          <div class="stat__label">Day streak</div>
+        </div>
+      `;
+    }
+
+    const recentProjects = [...state.projects].sort(newestFirst).slice(0, 6);
+
+    if (recentProjectsEl) {
+      if (recentProjects.length) {
+        recentProjectsEl.innerHTML = recentProjects.map((project) => `
+          <div class="item">
+            <div class="item__top">
+              <div>
+                <p class="item__title">${escapeHtml(project.name)}</p>
+                <p class="item__meta">${escapeHtml(project.type)} • ${escapeHtml(project.status)} • ${formatDate(project.createdAt)}</p>
+              </div>
+            </div>
+            ${renderTags([...(project.skills || []), ...(project.ksbs || [])])}
+          </div>
+        `).join("");
+      } else {
+        recentProjectsEl.innerHTML = `<div class="empty-state">No projects logged yet.</div>`;
+      }
+    }
+
+    const recentLearning = [...state.learningSessions].sort(newestFirst).slice(0, 6);
+
+    if (recentLearningEl) {
+      if (recentLearning.length) {
+        recentLearningEl.innerHTML = recentLearning.map((session) => `
+          <div class="item">
+            <div class="item__top">
+              <div>
+                <p class="item__title">${escapeHtml(session.skillName)}</p>
+                <p class="item__meta">${escapeHtml(session.date)} • ${session.minutes} mins • ${escapeHtml(session.difficulty)}</p>
+              </div>
+              <div class="tags">
+                <span class="tag">+${session.xpEarned} XP</span>
+              </div>
+            </div>
+            ${session.notes ? `<p class="item__meta">${escapeHtml(session.notes)}</p>` : ""}
+          </div>
+        `).join("");
+      } else {
+        recentLearningEl.innerHTML = `<div class="empty-state">No learning sessions logged yet.</div>`;
+      }
+    }
+
+    const ksbCounts = {};
+    state.ksbLibrary.forEach((ksb) => {
+      ksbCounts[ksb.code] = 0;
+    });
+
+    state.evidence.forEach((ev) => {
+      (ev.ksbs || []).forEach((code) => {
+        if (ksbCounts[code] === undefined) {
+          ksbCounts[code] = 0;
+        }
+        ksbCounts[code] += 1;
+      });
+    });
+
+    const weakestKsbs = Object.entries(ksbCounts)
+      .sort((a, b) => a[1] - b[1])
+      .slice(0, 5);
+
+    if (weakKsbsEl) {
+      if (weakestKsbs.length) {
+        weakKsbsEl.innerHTML = weakestKsbs.map(([code, count]) => {
+          const ksb = state.ksbLibrary.find((x) => x.code === code);
+          return `
+            <div class="item">
+              <div class="item__top">
+                <div>
+                  <p class="item__title">${escapeHtml(code)}</p>
+                  <p class="item__meta">${escapeHtml(ksb?.text || "No description available")}</p>
+                </div>
+                <div class="tag">${count} evidence</div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      } else {
+        weakKsbsEl.innerHTML = `<div class="empty-state">Add KSBs and evidence to see coverage gaps.</div>`;
+      }
+    }
+
+    let suggestionTitle = "Start building momentum";
+    let suggestionText = "Add your first skill, project, KSB, or note so the tracker can start guiding you.";
+
+    if (state.skills.length && state.skills.some((s) => (Number(s.progress) || 0) < 40)) {
+      const lowestSkill = [...state.skills].sort((a, b) => (Number(a.progress) || 0) - (Number(b.progress) || 0))[0];
+      suggestionTitle = `Boost ${lowestSkill.name}`;
+      suggestionText = `${lowestSkill.name} is currently at ${lowestSkill.progress}%. A good next move would be one focused study session or a small project using this skill.`;
+    } else if (state.ksbLibrary.length && weakestKsbs.length && weakestKsbs[0][1] === 0) {
+      suggestionTitle = `Add evidence for ${weakestKsbs[0][0]}`;
+      suggestionText = `${weakestKsbs[0][0]} has no evidence yet. Log one task, uni activity, or project outcome against it next.`;
+    } else if (state.projects.length && state.projects.some((p) => p.status === "In progress")) {
+      const inProgress = state.projects.find((p) => p.status === "In progress");
+      suggestionTitle = `Move ${inProgress.name} forward`;
+      suggestionText = `You already have work in motion. A useful next step would be finishing or updating ${inProgress.name}.`;
+    } else if (state.reflections.length === 0) {
+      suggestionTitle = "Write your first reflection";
+      suggestionText = "Add a weekly reflection so the app starts capturing what you are actually learning over time.";
+    } else if (streak === 0 && state.learningSessions.length) {
+      suggestionTitle = "Restart your learning streak";
+      suggestionText = "Log one short learning session today to start building momentum again.";
+    }
+
+    if (nextStepEl) {
+      nextStepEl.innerHTML = `
+        <div class="item">
+          <p class="item__title">${escapeHtml(suggestionTitle)}</p>
+          <p class="item__meta">${escapeHtml(suggestionText)}</p>
+        </div>
+      `;
+    }
   }
 
-function renderDashboard() {
-  const topSkillsEl = $("dashTopSkills");
-  const dashStatsEl = $("dashStats");
-  const recentProjectsEl = $("dashRecentProjects");
-  const weakKsbsEl = $("dashWeakKsbs");
-  const nextStepEl = $("dashNextStep");
+  function renderSkills() {
+    const q = safeTrim($("skillSearch")?.value).toLowerCase();
+    const filter = $("skillFilter")?.value || "all";
 
-  const topSkills = [...state.skills]
-    .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0))
-    .slice(0, 5);
+    const rows = [...state.skills]
+      .map((skill) => {
+        ensureSkillXPFields(skill);
+        return skill;
+      })
+      .filter((skill) => filter === "all" ? true : skill.category === filter)
+      .filter((skill) => {
+        const haystack = `${skill.name} ${skill.category} ${skill.goal || ""}`.toLowerCase();
+        return !q || haystack.includes(q);
+      })
+      .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
 
-  if (topSkills.length) {
-    topSkillsEl.innerHTML = topSkills.map((skill) => `
+    const listEl = $("skillsList");
+    if (!listEl) return;
+
+    if (!rows.length) {
+      listEl.innerHTML = `<div class="empty-state">No matching skills yet.</div>`;
+      renderSessionSkillOptions();
+      renderSessions();
+      return;
+    }
+
+    listEl.innerHTML = rows.map((skill) => `
       <div class="item">
         <div class="item__top">
           <div>
             <p class="item__title">${escapeHtml(skill.name)}</p>
             <p class="item__meta">${escapeHtml(skill.category)} • ${escapeHtml(skill.goal || "No goal set")}</p>
+            <div class="tags">
+              <span class="tag">Level ${skill.level}</span>
+              <span class="tag">${skill.xp} XP</span>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="iconbtn" data-skill-dec="${skill.id}" title="Decrease progress">−5</button>
+            <button class="iconbtn" data-skill-inc="${skill.id}" title="Increase progress">+5</button>
+            <button class="iconbtn" data-skill-del="${skill.id}" title="Delete skill">🗑️</button>
           </div>
         </div>
         ${renderProgressBar(skill.progress)}
       </div>
     `).join("");
-  } else {
-    topSkillsEl.innerHTML = `<div class="empty-state">No skills added yet.</div>`;
-  }
 
-function calculateXP(minutes, difficulty) {
-  const mins = Number(minutes) || 0;
-  const base = Math.max(5, Math.round(mins / 2));
-
-  const difficultyMultiplier = {
-    easy: 1,
-    medium: 1.25,
-    hard: 1.5
-  };
-
-  return Math.round(base * (difficultyMultiplier[difficulty] || 1));
-}
-
-function getLevelFromXP(xp) {
-  const value = Number(xp) || 0;
-  return Math.floor(value / 100) + 1;
-}
-
-function ensureSkillXPFields(skill) {
-  if (typeof skill.xp !== "number") skill.xp = 0;
-  if (typeof skill.level !== "number") skill.level = getLevelFromXP(skill.xp);
-}
-
-  const avgProgress = state.skills.length
-    ? Math.round(
-        state.skills.reduce((sum, skill) => sum + (Number(skill.progress) || 0), 0) / state.skills.length
-      )
-    : 0;
-
-  const completedProjects = state.projects.filter((p) => p.status === "Completed").length;
-  const evidenceCount = state.evidence.length;
-
-  dashStatsEl.innerHTML = `
-    <div class="stat">
-      <div class="stat__num">${avgProgress}%</div>
-      <div class="stat__label">Avg skill progress</div>
-    </div>
-    <div class="stat">
-      <div class="stat__num">${completedProjects}</div>
-      <div class="stat__label">Projects completed</div>
-    </div>
-    <div class="stat">
-      <div class="stat__num">${evidenceCount}</div>
-      <div class="stat__label">KSB evidence items</div>
-    </div>
-  `;
-
-  const recentProjects = [...state.projects].sort(newestFirst).slice(0, 6);
-
-  if (recentProjects.length) {
-    recentProjectsEl.innerHTML = recentProjects.map((project) => `
-      <div class="item">
-        <div class="item__top">
-          <div>
-            <p class="item__title">${escapeHtml(project.name)}</p>
-            <p class="item__meta">${escapeHtml(project.type)} • ${escapeHtml(project.status)} • ${formatDate(project.createdAt)}</p>
-          </div>
-        </div>
-        ${renderTags([...(project.skills || []), ...(project.ksbs || [])])}
-      </div>
-    `).join("");
-  } else {
-    recentProjectsEl.innerHTML = `<div class="empty-state">No projects logged yet.</div>`;
-  }
-
-  // Lowest KSB Coverage
-  const ksbCounts = {};
-  state.ksbLibrary.forEach((ksb) => {
-    ksbCounts[ksb.code] = 0;
-  });
-
-  state.evidence.forEach((ev) => {
-    (ev.ksbs || []).forEach((code) => {
-      if (ksbCounts[code] === undefined) {
-        ksbCounts[code] = 0;
-      }
-      ksbCounts[code] += 1;
+    document.querySelectorAll("[data-skill-inc]").forEach((btn) => {
+      btn.addEventListener("click", () => adjustSkill(btn.dataset.skillInc, 5));
     });
-  });
 
-  const weakestKsbs = Object.entries(ksbCounts)
-    .sort((a, b) => a[1] - b[1])
-    .slice(0, 5);
+    document.querySelectorAll("[data-skill-dec]").forEach((btn) => {
+      btn.addEventListener("click", () => adjustSkill(btn.dataset.skillDec, -5));
+    });
 
-  if (weakestKsbs.length) {
-    weakKsbsEl.innerHTML = weakestKsbs.map(([code, count]) => {
-      const ksb = state.ksbLibrary.find((x) => x.code === code);
-      return `
-        <div class="item">
-          <div class="item__top">
-            <div>
-              <p class="item__title">${escapeHtml(code)}</p>
-              <p class="item__meta">${escapeHtml(ksb?.text || "No description available")}</p>
-            </div>
-            <div class="tag">${count} evidence</div>
-          </div>
-        </div>
-      `;
-    }).join("");
-  } else {
-    weakKsbsEl.innerHTML = `<div class="empty-state">Add KSBs and evidence to see coverage gaps.</div>`;
-  }
+    document.querySelectorAll("[data-skill-del]").forEach((btn) => {
+      btn.addEventListener("click", () => deleteSkill(btn.dataset.skillDel));
+    });
 
-  // Suggested Next Step
-  let suggestionTitle = "Start building momentum";
-  let suggestionText = "Add your first skill, project, KSB, or note so the tracker can start guiding you.";
-
-  if (state.skills.length && state.skills.some((s) => (Number(s.progress) || 0) < 40)) {
-    const lowestSkill = [...state.skills].sort((a, b) => (Number(a.progress) || 0) - (Number(b.progress) || 0))[0];
-    suggestionTitle = `Boost ${lowestSkill.name}`;
-    suggestionText = `${lowestSkill.name} is currently at ${lowestSkill.progress}%. A good next move would be one focused study session or a small project using this skill.`;
-  } else if (state.ksbLibrary.length && weakestKsbs.length && weakestKsbs[0][1] === 0) {
-    suggestionTitle = `Add evidence for ${weakestKsbs[0][0]}`;
-    suggestionText = `${weakestKsbs[0][0]} has no evidence yet. Log one task, uni activity, or project outcome against it next.`;
-  } else if (state.projects.length && state.projects.some((p) => p.status === "In progress")) {
-    const inProgress = state.projects.find((p) => p.status === "In progress");
-    suggestionTitle = `Move ${inProgress.name} forward`;
-    suggestionText = `You already have work in motion. A useful next step would be finishing or updating ${inProgress.name}.`;
-  } else if (state.reflections.length === 0) {
-    suggestionTitle = "Write your first reflection";
-    suggestionText = "Add a weekly reflection so the app starts capturing what you are actually learning over time.";
-  }
-
-  nextStepEl.innerHTML = `
-    <div class="item">
-      <p class="item__title">${escapeHtml(suggestionTitle)}</p>
-      <p class="item__meta">${escapeHtml(suggestionText)}</p>
-    </div>
-  `;
-}
-
- function renderSkills() {
-  const q = safeTrim($("skillSearch").value).toLowerCase();
-  const filter = $("skillFilter").value;
-
-  const rows = [...state.skills]
-    .map((skill) => {
-      ensureSkillXPFields(skill);
-      return skill;
-    })
-    .filter((skill) => filter === "all" ? true : skill.category === filter)
-    .filter((skill) => {
-      const haystack = `${skill.name} ${skill.category} ${skill.goal || ""}`.toLowerCase();
-      return !q || haystack.includes(q);
-    })
-    .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
-
-  const listEl = $("skillsList");
-
-  if (!rows.length) {
-    listEl.innerHTML = `<div class="empty-state">No matching skills yet.</div>`;
     renderSessionSkillOptions();
     renderSessions();
-    return;
   }
-
-  listEl.innerHTML = rows.map((skill) => `
-    <div class="item">
-      <div class="item__top">
-        <div>
-          <p class="item__title">${escapeHtml(skill.name)}</p>
-          <p class="item__meta">${escapeHtml(skill.category)} • ${escapeHtml(skill.goal || "No goal set")}</p>
-          <div class="tags">
-            <span class="tag">Level ${skill.level}</span>
-            <span class="tag">${skill.xp} XP</span>
-          </div>
-        </div>
-        <div class="actions">
-          <button class="iconbtn" data-skill-dec="${skill.id}" title="Decrease progress">−5</button>
-          <button class="iconbtn" data-skill-inc="${skill.id}" title="Increase progress">+5</button>
-          <button class="iconbtn" data-skill-del="${skill.id}" title="Delete skill">🗑️</button>
-        </div>
-      </div>
-      ${renderProgressBar(skill.progress)}
-    </div>
-  `).join("");
-
-  document.querySelectorAll("[data-skill-inc]").forEach((btn) => {
-    btn.addEventListener("click", () => adjustSkill(btn.dataset.skillInc, 5));
-  });
-
-  document.querySelectorAll("[data-skill-dec]").forEach((btn) => {
-    btn.addEventListener("click", () => adjustSkill(btn.dataset.skillDec, -5));
-  });
-
-  document.querySelectorAll("[data-skill-del]").forEach((btn) => {
-    btn.addEventListener("click", () => deleteSkill(btn.dataset.skillDel));
-  });
-
-  renderSessionSkillOptions();
-  renderSessions();
-}
 
   function adjustSkill(id, delta) {
     const skill = state.skills.find((s) => s.id === id);
@@ -385,80 +495,80 @@ function ensureSkillXPFields(skill) {
     saveState();
   }
 
-function renderSessionSkillOptions() {
-  const select = $("sessionSkill");
-  if (!select) return;
+  function renderSessionSkillOptions() {
+    const select = $("sessionSkill");
+    if (!select) return;
 
-  if (!state.skills.length) {
-    select.innerHTML = `<option value="">Add a skill first</option>`;
-    select.disabled = true;
-    return;
+    if (!state.skills.length) {
+      select.innerHTML = `<option value="">Add a skill first</option>`;
+      select.disabled = true;
+      return;
+    }
+
+    select.disabled = false;
+    select.innerHTML = state.skills
+      .map((skill) => `<option value="${skill.id}">${escapeHtml(skill.name)}</option>`)
+      .join("");
   }
 
-  select.disabled = false;
-  select.innerHTML = state.skills
-    .map((skill) => `<option value="${skill.id}">${escapeHtml(skill.name)}</option>`)
-    .join("");
-}
+  function renderSessions() {
+    const listEl = $("sessionList");
+    if (!listEl) return;
 
-function renderSessions() {
-  const listEl = $("sessionList");
-  if (!listEl) return;
+    const rows = [...state.learningSessions].sort(newestFirst).slice(0, 8);
 
-  const rows = [...state.learningSessions].sort(newestFirst).slice(0, 8);
+    if (!rows.length) {
+      listEl.innerHTML = `<div class="empty-state">No learning sessions logged yet.</div>`;
+      return;
+    }
 
-  if (!rows.length) {
-    listEl.innerHTML = `<div class="empty-state">No learning sessions logged yet.</div>`;
-    return;
-  }
-
-  listEl.innerHTML = rows.map((session) => `
-    <div class="item">
-      <div class="item__top">
-        <div>
-          <p class="item__title">${escapeHtml(session.skillName)}</p>
-          <p class="item__meta">${escapeHtml(session.date)} • ${session.minutes} mins • ${escapeHtml(session.difficulty)}</p>
+    listEl.innerHTML = rows.map((session) => `
+      <div class="item">
+        <div class="item__top">
+          <div>
+            <p class="item__title">${escapeHtml(session.skillName)}</p>
+            <p class="item__meta">${escapeHtml(session.date)} • ${session.minutes} mins • ${escapeHtml(session.difficulty)}</p>
+          </div>
+          <div class="tags">
+            <span class="tag">+${session.xpEarned} XP</span>
+          </div>
         </div>
-        <div class="tags">
-          <span class="tag">+${session.xpEarned} XP</span>
-        </div>
+        ${session.notes ? `<p class="item__meta">${escapeHtml(session.notes)}</p>` : ""}
       </div>
-      ${session.notes ? `<p class="item__meta">${escapeHtml(session.notes)}</p>` : ""}
-    </div>
-  `).join("");
-}
+    `).join("");
+  }
 
-function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
-  const skill = state.skills.find((s) => s.id === skillId);
-  if (!skill) return;
+  function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
+    const skill = state.skills.find((s) => s.id === skillId);
+    if (!skill) return;
 
-  ensureSkillXPFields(skill);
+    ensureSkillXPFields(skill);
 
-  const xpEarned = calculateXP(minutes, difficulty);
-  skill.xp += xpEarned;
-  skill.level = getLevelFromXP(skill.xp);
+    const xpEarned = calculateXP(minutes, difficulty);
+    skill.xp += xpEarned;
+    skill.level = getLevelFromXP(skill.xp);
 
-  const progressGain = Math.max(1, Math.round(xpEarned / 20));
-  skill.progress = Math.min(100, (Number(skill.progress) || 0) + progressGain);
+    const progressGain = Math.max(1, Math.round(xpEarned / 20));
+    skill.progress = Math.min(100, (Number(skill.progress) || 0) + progressGain);
 
-  state.learningSessions.unshift({
-    id: uid("session"),
-    skillId,
-    skillName: skill.name,
-    date,
-    minutes: Number(minutes),
-    difficulty,
-    notes,
-    xpEarned,
-    createdAt: nowISO()
-  });
+    state.learningSessions.unshift({
+      id: uid("session"),
+      skillId,
+      skillName: skill.name,
+      date,
+      minutes: Number(minutes),
+      difficulty,
+      notes,
+      xpEarned,
+      createdAt: nowISO()
+    });
 
-  saveState();
-}
+    saveState();
+  }
 
   function renderProjects() {
-    const q = safeTrim($("projectSearch").value).toLowerCase();
-    const filter = $("projectFilter").value;
+    const q = safeTrim($("projectSearch")?.value).toLowerCase();
+    const filter = $("projectFilter")?.value || "all";
 
     const rows = [...state.projects]
       .filter((project) => filter === "all" ? true : project.type === filter)
@@ -477,6 +587,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
       .sort(newestFirst);
 
     const listEl = $("projectsList");
+    if (!listEl) return;
 
     if (!rows.length) {
       listEl.innerHTML = `<div class="empty-state">No matching projects yet.</div>`;
@@ -535,6 +646,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
 
     const ksbRows = [...state.ksbLibrary].sort((a, b) => a.code.localeCompare(b.code));
     const ksbListEl = $("ksbList");
+    if (!ksbListEl) return;
 
     if (!ksbRows.length) {
       ksbListEl.innerHTML = `<div class="empty-state">No KSBs added yet.</div>`;
@@ -559,7 +671,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
       });
     }
 
-    const q = safeTrim($("evidenceSearch").value).toLowerCase();
+    const q = safeTrim($("evidenceSearch")?.value).toLowerCase();
     const evidenceRows = [...state.evidence]
       .filter((ev) => {
         const haystack = `${ev.title} ${(ev.ksbs || []).join(" ")} ${ev.notes || ""}`.toLowerCase();
@@ -568,6 +680,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
       .sort(newestFirst);
 
     const evidenceListEl = $("evidenceList");
+    if (!evidenceListEl) return;
 
     if (!evidenceRows.length) {
       evidenceListEl.innerHTML = `<div class="empty-state">No matching evidence yet.</div>`;
@@ -605,7 +718,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
   }
 
   function renderNotes() {
-    const q = safeTrim($("noteSearch").value).toLowerCase();
+    const q = safeTrim($("noteSearch")?.value).toLowerCase();
 
     const rows = [...state.notes]
       .filter((note) => {
@@ -615,6 +728,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
       .sort(newestFirst);
 
     const listEl = $("notesList");
+    if (!listEl) return;
 
     if (!rows.length) {
       listEl.innerHTML = `<div class="empty-state">No matching notes yet.</div>`;
@@ -653,6 +767,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
   function renderReflections() {
     const rows = [...state.reflections].sort(newestFirst);
     const listEl = $("reflectionList");
+    if (!listEl) return;
 
     if (!rows.length) {
       listEl.innerHTML = `<div class="empty-state">No reflections yet.</div>`;
@@ -707,15 +822,15 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
       try {
         const parsed = JSON.parse(event.target.result);
 
-  state = {
-  skills: Array.isArray(parsed.skills) ? parsed.skills : [],
-  projects: Array.isArray(parsed.projects) ? parsed.projects : [],
-  ksbLibrary: Array.isArray(parsed.ksbLibrary) ? parsed.ksbLibrary : [],
-  evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
-  notes: Array.isArray(parsed.notes) ? parsed.notes : [],
-  reflections: Array.isArray(parsed.reflections) ? parsed.reflections : [],
-  learningSessions: Array.isArray(parsed.learningSessions) ? parsed.learningSessions : []
-};
+        state = {
+          skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+          projects: Array.isArray(parsed.projects) ? parsed.projects : [],
+          ksbLibrary: Array.isArray(parsed.ksbLibrary) ? parsed.ksbLibrary : [],
+          evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
+          notes: Array.isArray(parsed.notes) ? parsed.notes : [],
+          reflections: Array.isArray(parsed.reflections) ? parsed.reflections : [],
+          learningSessions: Array.isArray(parsed.learningSessions) ? parsed.learningSessions : []
+        };
 
         saveState();
         alert("Import complete.");
@@ -741,7 +856,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
   }
 
   function bindForms() {
-    $("skillForm").addEventListener("submit", (event) => {
+    $("skillForm")?.addEventListener("submit", (event) => {
       event.preventDefault();
 
       const name = safeTrim($("skillName").value);
@@ -749,53 +864,53 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
       const progress = Math.max(0, Math.min(100, Number($("skillProgress").value) || 0));
       const goal = safeTrim($("skillGoal").value);
 
-  state.skills.unshift({
-  id: uid("skill"),
-  name,
-  category,
-  progress,
-  goal,
-  xp: 0,
-  level: 1,
-  createdAt: nowISO()
-});
+      state.skills.unshift({
+        id: uid("skill"),
+        name,
+        category,
+        progress,
+        goal,
+        xp: 0,
+        level: 1,
+        createdAt: nowISO()
+      });
 
       event.target.reset();
       $("skillProgress").value = 10;
       saveState();
     });
 
-    $("projectForm").addEventListener("submit", (event) => {
+    $("sessionForm")?.addEventListener("submit", (event) => {
       event.preventDefault();
 
-      $("sessionForm").addEventListener("submit", (event) => {
-  event.preventDefault();
+      const skillId = $("sessionSkill").value;
+      const date = $("sessionDate").value;
+      const minutes = $("sessionMinutes").value;
+      const difficulty = $("sessionDifficulty").value;
+      const notes = safeTrim($("sessionNotes").value);
 
-  const skillId = $("sessionSkill").value;
-  const date = $("sessionDate").value;
-  const minutes = $("sessionMinutes").value;
-  const difficulty = $("sessionDifficulty").value;
-  const notes = safeTrim($("sessionNotes").value);
+      if (!skillId) {
+        alert("Please add a skill first.");
+        return;
+      }
 
-  if (!skillId) {
-    alert("Please add a skill first.");
-    return;
-  }
+      logLearningSession({
+        skillId,
+        date,
+        minutes,
+        difficulty,
+        notes
+      });
 
-  logLearningSession({
-    skillId,
-    date,
-    minutes,
-    difficulty,
-    notes
-  });
+      event.target.reset();
+      $("sessionMinutes").value = 30;
+      $("sessionDifficulty").value = "medium";
+      $("sessionDate").value = new Date().toISOString().split("T")[0];
+      renderSessionSkillOptions();
+    });
 
-  event.target.reset();
-  $("sessionMinutes").value = 30;
-  $("sessionDifficulty").value = "medium";
-  $("sessionDate").value = new Date().toISOString().split("T")[0];
-  renderSessionSkillOptions();
-});
+    $("projectForm")?.addEventListener("submit", (event) => {
+      event.preventDefault();
 
       const name = safeTrim($("projName").value);
       const type = $("projType").value;
@@ -819,7 +934,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
       saveState();
     });
 
-    $("ksbForm").addEventListener("submit", (event) => {
+    $("ksbForm")?.addEventListener("submit", (event) => {
       event.preventDefault();
 
       const code = safeTrim($("ksbCode").value).toUpperCase();
@@ -836,7 +951,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
       saveState();
     });
 
-    $("evidenceForm").addEventListener("submit", (event) => {
+    $("evidenceForm")?.addEventListener("submit", (event) => {
       event.preventDefault();
 
       const title = safeTrim($("evTitle").value);
@@ -855,7 +970,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
       saveState();
     });
 
-    $("noteForm").addEventListener("submit", (event) => {
+    $("noteForm")?.addEventListener("submit", (event) => {
       event.preventDefault();
 
       const title = safeTrim($("noteTitle").value);
@@ -876,7 +991,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
       saveState();
     });
 
-    $("reflectionForm").addEventListener("submit", (event) => {
+    $("reflectionForm")?.addEventListener("submit", (event) => {
       event.preventDefault();
 
       const week = safeTrim($("refWeek").value);
@@ -897,14 +1012,14 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
   }
 
   function bindFilters() {
-    $("skillSearch").addEventListener("input", renderSkills);
-    $("skillFilter").addEventListener("change", renderSkills);
+    $("skillSearch")?.addEventListener("input", renderSkills);
+    $("skillFilter")?.addEventListener("change", renderSkills);
 
-    $("projectSearch").addEventListener("input", renderProjects);
-    $("projectFilter").addEventListener("change", renderProjects);
+    $("projectSearch")?.addEventListener("input", renderProjects);
+    $("projectFilter")?.addEventListener("change", renderProjects);
 
-    $("evidenceSearch").addEventListener("input", renderKSB);
-    $("noteSearch").addEventListener("input", renderNotes);
+    $("evidenceSearch")?.addEventListener("input", renderKSB);
+    $("noteSearch")?.addEventListener("input", renderNotes);
   }
 
   function bindNavigation() {
@@ -914,15 +1029,15 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
   }
 
   function bindDataButtons() {
-    $("btnExport").addEventListener("click", exportData);
+    $("btnExport")?.addEventListener("click", exportData);
 
-    $("importFile").addEventListener("change", (event) => {
+    $("importFile")?.addEventListener("change", (event) => {
       const file = event.target.files[0];
       importData(file);
       event.target.value = "";
     });
 
-    $("btnReset").addEventListener("click", resetEverything);
+    $("btnReset")?.addEventListener("click", resetEverything);
   }
 
   function renderAll() {
@@ -933,6 +1048,7 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
     renderKSB();
     renderNotes();
     renderReflections();
+    renderSessions();
   }
 
   function init() {
@@ -942,6 +1058,12 @@ function logLearningSession({ skillId, date, minutes, difficulty, notes }) {
     bindDataButtons();
     renderAll();
     showView("dashboard");
+
+    if ($("sessionDate")) {
+      $("sessionDate").value = new Date().toISOString().split("T")[0];
+    }
+
+    renderSessionSkillOptions();
   }
 
   init();

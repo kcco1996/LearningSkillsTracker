@@ -127,84 +127,149 @@
   </div>
 </div>
 
-          <div class="card">
-            <div class="card__head">
-              <h2 class="card__title">Recent Projects</h2>
-              <p class="card__desc">Latest things you’ve completed or started.</p>
-            </div>
-            <div class="card__body">
-              <div class="list" id="dashRecentProjects"></div>
-            </div>
-          </div>
+     <div class="grid2">
+  <div class="card">
+    <div class="card__head">
+      <h2 class="card__title">Recent Projects</h2>
+      <p class="card__desc">Latest things you’ve completed or started.</p>
+    </div>
+    <div class="card__body">
+      <div class="list" id="dashRecentProjects"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__head">
+      <h2 class="card__title">Recent Learning</h2>
+      <p class="card__desc">Your latest logged learning sessions.</p>
+    </div>
+    <div class="card__body">
+      <div class="list" id="dashRecentLearning"></div>
+    </div>
+  </div>
+</div>
         </section>
 
         <!-- SKILLS -->
-        <section class="view" id="view-skills">
-          <div class="grid2">
-            <div class="card">
-              <div class="card__head">
-                <h2 class="card__title">Add Skill</h2>
-                <p class="card__desc">Track a skill with a progress bar.</p>
-              </div>
-              <div class="card__body">
-                <form class="form" id="skillForm">
-                  <div class="field">
-                    <label for="skillName">Skill name</label>
-                    <input id="skillName" type="text" placeholder="e.g. SQL, PySpark, Power BI" required />
-                  </div>
-
-                  <div class="field">
-                    <label for="skillCategory">Category</label>
-                    <select id="skillCategory">
-                      <option>Data Science</option>
-                      <option>Python</option>
-                      <option>Machine Learning</option>
-                      <option>Power BI</option>
-                      <option>University</option>
-                      <option>Side Projects</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-
-                  <div class="field">
-                    <label for="skillProgress">Progress (0–100)</label>
-                    <input id="skillProgress" type="number" min="0" max="100" value="10" />
-                  </div>
-
-                  <div class="field">
-                    <label for="skillGoal">Goal / Why</label>
-                    <input id="skillGoal" type="text" placeholder="e.g. become confident writing joins + window functions" />
-                  </div>
-
-                  <button class="btn" type="submit">Add Skill</button>
-                </form>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card__head">
-                <h2 class="card__title">Skills</h2>
-                <p class="card__desc">Update progress as you go.</p>
-              </div>
-              <div class="card__body">
-                <div class="filters">
-                  <input id="skillSearch" type="text" placeholder="Search skills…" />
-                  <select id="skillFilter">
-                    <option value="all">All categories</option>
-                    <option value="Data Science">Data Science</option>
-                    <option value="Python">Python</option>
-                    <option value="Machine Learning">Machine Learning</option>
-                    <option value="Power BI">Power BI</option>
-                    <option value="University">University</option>
-                    <option value="Side Projects">Side Projects</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div class="list" id="skillsList"></div>
-              </div>
-            </div>
+       <section class="view" id="view-skills">
+  <div class="grid2">
+    <div class="card">
+      <div class="card__head">
+        <h2 class="card__title">Add Skill</h2>
+        <p class="card__desc">Track a skill with a progress bar.</p>
+      </div>
+      <div class="card__body">
+        <form class="form" id="skillForm">
+          <div class="field">
+            <label for="skillName">Skill name</label>
+            <input id="skillName" type="text" placeholder="e.g. SQL, PySpark, Power BI" required />
           </div>
-        </section>
+
+          <div class="field">
+            <label for="skillCategory">Category</label>
+            <select id="skillCategory">
+              <option>Data Science</option>
+              <option>Python</option>
+              <option>Machine Learning</option>
+              <option>Power BI</option>
+              <option>University</option>
+              <option>Side Projects</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="skillProgress">Progress (0–100)</label>
+            <input id="skillProgress" type="number" min="0" max="100" value="10" />
+          </div>
+
+          <div class="field">
+            <label for="skillGoal">Goal / Why</label>
+            <input id="skillGoal" type="text" placeholder="e.g. become confident writing joins + window functions" />
+          </div>
+
+          <button class="btn" type="submit">Add Skill</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h2 class="card__title">Skills</h2>
+        <p class="card__desc">Update progress as you go.</p>
+      </div>
+      <div class="card__body">
+        <div class="filters">
+          <input id="skillSearch" type="text" placeholder="Search skills…" />
+          <select id="skillFilter">
+            <option value="all">All categories</option>
+            <option value="Data Science">Data Science</option>
+            <option value="Python">Python</option>
+            <option value="Machine Learning">Machine Learning</option>
+            <option value="Power BI">Power BI</option>
+            <option value="University">University</option>
+            <option value="Side Projects">Side Projects</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="list" id="skillsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card__head">
+        <h2 class="card__title">Log Learning Session</h2>
+        <p class="card__desc">Earn XP by recording focused learning time.</p>
+      </div>
+      <div class="card__body">
+        <form class="form" id="sessionForm">
+          <div class="field">
+            <label for="sessionSkill">Skill</label>
+            <select id="sessionSkill" required></select>
+          </div>
+
+          <div class="field">
+            <label for="sessionDate">Date</label>
+            <input id="sessionDate" type="date" required />
+          </div>
+
+          <div class="field">
+            <label for="sessionMinutes">Minutes spent</label>
+            <input id="sessionMinutes" type="number" min="5" step="5" value="30" required />
+          </div>
+
+          <div class="field">
+            <label for="sessionDifficulty">Difficulty</label>
+            <select id="sessionDifficulty">
+              <option value="easy">Easy</option>
+              <option value="medium" selected>Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="sessionNotes">Notes</label>
+            <textarea id="sessionNotes" rows="4" placeholder="What did you work on?"></textarea>
+          </div>
+
+          <button class="btn" type="submit">Log Session</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h2 class="card__title">Recent Learning Sessions</h2>
+        <p class="card__desc">Your latest XP activity.</p>
+      </div>
+      <div class="card__body">
+        <div class="list" id="sessionList"></div>
+      </div>
+    </div>
+  </div>
+</section>
 
         <!-- PROJECTS -->
         <section class="view" id="view-projects">
