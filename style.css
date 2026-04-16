@@ -319,3 +319,132 @@ input:focus, select:focus, textarea:focus{
   .filters{ flex-direction:column; }
   .filters select{ width: 100%; }
 }
+/* ===== LIST ITEMS ===== */
+
+.item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 12px;
+  background: rgba(255,255,255,0.03);
+}
+
+.item__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.item__title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.item__meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ===== ACTION BUTTONS ===== */
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.iconbtn {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.iconbtn:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+/* ===== TAGS ===== */
+
+.tags {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border);
+}
+
+/* ===== PROGRESS BAR ===== */
+
+.progress {
+  margin-top: 10px;
+}
+
+.progress__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.bar {
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar div {
+  height: 100%;
+  background: var(--accent);
+}
+
+/* ===== DASHBOARD STATS ===== */
+
+.statrow {
+  display: flex;
+  gap: 16px;
+}
+
+.stat {
+  flex: 1;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+}
+
+.stat__num {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.stat__label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ===== EMPTY STATE ===== */
+
+.empty-state {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ===== LINKS ===== */
+
+.smalllink {
+  color: var(--accent);
+  text-decoration: none;
+}
