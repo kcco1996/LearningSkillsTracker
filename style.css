@@ -448,3 +448,13 @@ input:focus, select:focus, textarea:focus{
   color: var(--accent);
   text-decoration: none;
 }
+
+#dashNextStep .item {
+  margin-bottom: 0;
+}
+
+#dashWeakKsbs .item:last-child,
+#dashRecentProjects .item:last-child,
+#dashTopSkills .item:last-child {
+  margin-bottom: 0;
+}
