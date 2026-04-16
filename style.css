@@ -625,3 +625,50 @@ input:focus, select:focus, textarea:focus{
     flex-direction: column;
   }
 }
+
+.hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.attachments {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachment {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  background: rgba(255,255,255,0.03);
+}
+
+.attachment__name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.attachment__meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.attachment__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn--tiny {
+  padding: 5px 10px;
+  font-size: 12px;
+}

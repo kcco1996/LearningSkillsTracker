@@ -38,6 +38,13 @@
     return d.toLocaleDateString();
   }
 
+  function formatBytes(bytes) {
+  const value = Number(bytes) || 0;
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${Math.round(value / 102.4) / 10} KB`;
+  return `${Math.round(value / (1024 * 102.4)) / 10} MB`;
+}
+
   const DEFAULT_STATE = {
     skills: [],
     projects: [],
@@ -136,6 +143,10 @@
     if (!("unlockAt" in skill)) skill.unlockAt = 40;
   }
 
+  function ensureSkillAttachmentFields(skill) {
+  if (!Array.isArray(skill.attachments)) skill.attachments = [];
+}
+
   function getSkillById(skillId) {
     return state.skills.find((skill) => skill.id === skillId);
   }
@@ -165,6 +176,16 @@
 
     return `Requires ${prerequisite.name} at ${skill.unlockAt}%`;
   }
+
+  function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Could not read file."));
+    reader.readAsDataURL(file);
+  });
+}
 
   function normaliseDateString(value) {
     if (!value) return null;
@@ -266,6 +287,29 @@
       </div>
     `;
   }
+
+  function renderAttachments(attachments) {
+  if (!attachments || !attachments.length) return "";
+
+  return `
+    <div class="attachments">
+      ${attachments.map((file, index) => `
+        <div class="attachment">
+          <div class="attachment__info">
+            <div class="attachment__name">${escapeHtml(file.name || "Attachment")}</div>
+            <div class="attachment__meta">
+              ${escapeHtml(file.type || "file")} • ${formatBytes(file.size || 0)}
+            </div>
+          </div>
+          <div class="attachment__actions">
+            <a class="btn btn--ghost btn--tiny" href="${file.dataUrl}" target="_blank" rel="noopener">Open</a>
+            <button class="btn btn--ghost btn--tiny" data-attachment-remove-skill="${escapeHtml(file.skillId || "")}" data-attachment-remove-index="${index}" type="button">Remove</button>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
 
   function renderDashboard() {
     const topSkillsEl = $("dashTopSkills");
@@ -457,91 +501,107 @@
   }
 
   function renderSkills() {
-    const q = safeTrim($("skillSearch")?.value).toLowerCase();
-    const filter = $("skillFilter")?.value || "all";
+  const q = safeTrim($("skillSearch")?.value).toLowerCase();
+  const filter = $("skillFilter")?.value || "all";
 
-    const rows = [...state.skills]
-      .map((skill) => {
-        ensureSkillXPFields(skill);
-        ensureSkillDependencyFields(skill);
-        return skill;
-      })
-      .filter((skill) => {
-        if (!filter || filter === "all" || filter === "All categories") return true;
-        return skill.category === filter;
-      })
-      .filter((skill) => {
-        const prerequisite = getSkillById(skill.prerequisiteSkillId);
-        const haystack = `
-          ${skill.name}
-          ${skill.category}
-          ${skill.goal || ""}
-          ${prerequisite?.name || ""}
-          ${getSkillLockReason(skill)}
-        `.toLowerCase();
-
-        return !q || haystack.includes(q);
-      })
-      .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
-
-    const listEl = $("skillsList");
-    if (!listEl) return;
-
-    if (!rows.length) {
-      listEl.innerHTML = `<div class="empty-state">No matching skills yet.</div>`;
-      renderSessionSkillOptions();
-      renderSessions();
-      renderSkillPrerequisiteOptions();
-      return;
-    }
-
-    listEl.innerHTML = rows.map((skill) => {
-      const unlocked = isSkillUnlocked(skill);
+  const rows = [...state.skills]
+    .map((skill) => {
+      ensureSkillXPFields(skill);
+      ensureSkillDependencyFields(skill);
+      ensureSkillAttachmentFields(skill);
+      return skill;
+    })
+    .filter((skill) => {
+      if (!filter || filter === "all" || filter === "All categories") return true;
+      return skill.category === filter;
+    })
+    .filter((skill) => {
       const prerequisite = getSkillById(skill.prerequisiteSkillId);
+      const haystack = `
+        ${skill.name}
+        ${skill.category}
+        ${skill.goal || ""}
+        ${prerequisite?.name || ""}
+        ${getSkillLockReason(skill)}
+        ${(skill.attachments || []).map((a) => a.name).join(" ")}
+      `.toLowerCase();
 
-      return `
-        <div class="item ${unlocked ? "" : "item--locked"}">
-          <div class="item__top">
-            <div>
-              <p class="item__title">${escapeHtml(skill.name)}</p>
-              <p class="item__meta">${escapeHtml(skill.category)} • ${escapeHtml(skill.goal || "No goal set")}</p>
+      return !q || haystack.includes(q);
+    })
+    .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
 
-              <div class="tags">
-                <span class="tag">Level ${skill.level}</span>
-                <span class="tag">${skill.xp} XP</span>
-                <span class="tag ${unlocked ? "tag--success" : "tag--locked"}">${unlocked ? "Unlocked" : "Locked"}</span>
-              </div>
+  const listEl = $("skillsList");
+  if (!listEl) return;
 
-              ${prerequisite ? `<p class="item__meta">${escapeHtml(getSkillLockReason(skill))}</p>` : ""}
-            </div>
-
-            <div class="actions">
-              <button class="iconbtn" data-skill-dec="${skill.id}" title="Decrease progress">−5</button>
-              <button class="iconbtn" data-skill-inc="${skill.id}" title="Increase progress">+5</button>
-              <button class="iconbtn" data-skill-del="${skill.id}" title="Delete skill">🗑️</button>
-            </div>
-          </div>
-          ${renderProgressBar(skill.progress)}
-        </div>
-      `;
-    }).join("");
-
-    document.querySelectorAll("[data-skill-inc]").forEach((btn) => {
-      btn.addEventListener("click", () => adjustSkill(btn.dataset.skillInc, 5));
-    });
-
-    document.querySelectorAll("[data-skill-dec]").forEach((btn) => {
-      btn.addEventListener("click", () => adjustSkill(btn.dataset.skillDec, -5));
-    });
-
-    document.querySelectorAll("[data-skill-del]").forEach((btn) => {
-      btn.addEventListener("click", () => deleteSkill(btn.dataset.skillDel));
-    });
-
+  if (!rows.length) {
+    listEl.innerHTML = `<div class="empty-state">No matching skills yet.</div>`;
     renderSessionSkillOptions();
     renderSessions();
     renderSkillPrerequisiteOptions();
+    return;
   }
+
+  listEl.innerHTML = rows.map((skill) => {
+    const unlocked = isSkillUnlocked(skill);
+    const prerequisite = getSkillById(skill.prerequisiteSkillId);
+
+    return `
+      <div class="item ${unlocked ? "" : "item--locked"}">
+        <div class="item__top">
+          <div>
+            <p class="item__title">${escapeHtml(skill.name)}</p>
+            <p class="item__meta">${escapeHtml(skill.category)} • ${escapeHtml(skill.goal || "No goal set")}</p>
+
+            <div class="tags">
+              <span class="tag">Level ${skill.level}</span>
+              <span class="tag">${skill.xp} XP</span>
+              <span class="tag ${unlocked ? "tag--success" : "tag--locked"}">${unlocked ? "Unlocked" : "Locked"}</span>
+              <span class="tag">${(skill.attachments || []).length} file(s)</span>
+            </div>
+
+            ${prerequisite ? `<p class="item__meta">${escapeHtml(getSkillLockReason(skill))}</p>` : ""}
+          </div>
+
+          <div class="actions">
+            <button class="iconbtn" data-skill-dec="${skill.id}" title="Decrease progress">−5</button>
+            <button class="iconbtn" data-skill-inc="${skill.id}" title="Increase progress">+5</button>
+            <button class="iconbtn" data-skill-del="${skill.id}" title="Delete skill">🗑️</button>
+          </div>
+        </div>
+
+        ${renderProgressBar(skill.progress)}
+        ${renderAttachments(
+          (skill.attachments || []).map((file) => ({ ...file, skillId: skill.id }))
+        )}
+      </div>
+    `;
+  }).join("");
+
+  document.querySelectorAll("[data-skill-inc]").forEach((btn) => {
+    btn.addEventListener("click", () => adjustSkill(btn.dataset.skillInc, 5));
+  });
+
+  document.querySelectorAll("[data-skill-dec]").forEach((btn) => {
+    btn.addEventListener("click", () => adjustSkill(btn.dataset.skillDec, -5));
+  });
+
+  document.querySelectorAll("[data-skill-del]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteSkill(btn.dataset.skillDel));
+  });
+
+  document.querySelectorAll("[data-attachment-remove-skill]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      removeSkillAttachment(
+        btn.dataset.attachmentRemoveSkill,
+        Number(btn.dataset.attachmentRemoveIndex)
+      );
+    });
+  });
+
+  renderSessionSkillOptions();
+  renderSessions();
+  renderSkillPrerequisiteOptions();
+}
 
 function renderSkillTree() {
   const treeEl = $("skillTree");
@@ -695,6 +755,15 @@ function renderSkillTree() {
     state.skills = state.skills.filter((s) => s.id !== id);
     saveState();
   }
+
+  function removeSkillAttachment(skillId, index) {
+  const skill = state.skills.find((s) => s.id === skillId);
+  if (!skill) return;
+
+  ensureSkillAttachmentFields(skill);
+  skill.attachments.splice(index, 1);
+  saveState();
+}
 
   function renderSessionSkillOptions() {
     const select = $("sessionSkill");
@@ -1077,41 +1146,67 @@ function renderSkillTree() {
   }
 
   function bindForms() {
-    $("skillForm")?.addEventListener("submit", (event) => {
-      event.preventDefault();
+    $("skillForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
 
-      const name = safeTrim($("skillName").value);
-      const category = $("skillCategory").value;
-      const progress = Math.max(0, Math.min(100, Number($("skillProgress").value) || 0));
-      const goal = safeTrim($("skillGoal").value);
-      const prerequisiteSkillId = $("skillPrerequisite")?.value || "";
-      const unlockAt = Math.max(1, Math.min(100, Number($("skillUnlockAt")?.value) || 40));
+  const name = safeTrim($("skillName").value);
+  const category = $("skillCategory").value;
+  const progress = Math.max(0, Math.min(100, Number($("skillProgress").value) || 0));
+  const goal = safeTrim($("skillGoal").value);
+  const prerequisiteSkillId = $("skillPrerequisite")?.value || "";
+  const unlockAt = Math.max(1, Math.min(100, Number($("skillUnlockAt")?.value) || 40));
+  const file = $("skillAttachment")?.files?.[0];
 
-      if (!name) {
-        alert("Please enter a skill name.");
-        return;
-      }
+  if (!name) {
+    alert("Please enter a skill name.");
+    return;
+  }
 
-      state.skills.unshift({
-        id: uid("skill"),
-        name,
-        category,
-        progress,
-        goal,
-        xp: 0,
-        level: 1,
-        prerequisiteSkillId,
-        unlockAt,
-        createdAt: nowISO()
+  const attachments = [];
+
+  if (file) {
+    const maxSize = 1024 * 1024 * 2; // 2 MB
+    if (file.size > maxSize) {
+      alert("Please use a file smaller than 2 MB for local storage.");
+      return;
+    }
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      attachments.push({
+        name: file.name,
+        type: file.type || "file",
+        size: file.size,
+        dataUrl,
+        addedAt: nowISO()
       });
+    } catch (error) {
+      alert("Could not read the attachment.");
+      return;
+    }
+  }
 
-      event.target.reset();
-      $("skillProgress").value = 10;
-      if ($("skillUnlockAt")) $("skillUnlockAt").value = 40;
+  state.skills.unshift({
+    id: uid("skill"),
+    name,
+    category,
+    progress,
+    goal,
+    xp: 0,
+    level: 1,
+    prerequisiteSkillId,
+    unlockAt,
+    attachments,
+    createdAt: nowISO()
+  });
 
-      saveState();
-      renderSkillPrerequisiteOptions();
-    });
+  event.target.reset();
+  $("skillProgress").value = 10;
+  if ($("skillUnlockAt")) $("skillUnlockAt").value = 40;
+
+  saveState();
+  renderSkillPrerequisiteOptions();
+});
 
     $("sessionForm")?.addEventListener("submit", (event) => {
       event.preventDefault();
