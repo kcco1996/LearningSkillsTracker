@@ -108,10 +108,19 @@
     }
   }
 
-  function saveState() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    renderAll();
+async function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+  if (currentUser && window.firebaseAuthHelpers) {
+    try {
+      await window.firebaseAuthHelpers.saveSkills(currentUser.uid, state.skills);
+    } catch (error) {
+      console.error("Cloud save failed:", error);
+    }
   }
+
+  renderAll();
+}
 
   function newestFirst(a, b) {
     return (b.createdAt || "").localeCompare(a.createdAt || "");
@@ -1436,10 +1445,24 @@ function initAuth() {
     return;
   }
 
-window.firebaseAuthHelpers.onUserChanged((user) => {
-  console.log("Auth changed:", user);
+window.firebaseAuthHelpers.onUserChanged(async (user) => {
   currentUser = user || null;
+
+  if (currentUser) {
+    try {
+      const cloudSkills =
+        await window.firebaseAuthHelpers.loadSkills(currentUser.uid);
+
+      if (cloudSkills.length) {
+        state.skills = cloudSkills;
+      }
+    } catch (error) {
+      console.error("Cloud load failed:", error);
+    }
+  }
+
   renderAuthStatus();
+  renderAll();
 });
 }
 

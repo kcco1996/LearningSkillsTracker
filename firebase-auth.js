@@ -8,6 +8,13 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
 
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyCBdu7ZLTrFwWbkcxingJFK4mf2KxoRQ3g",
   authDomain: "learningskillstracker.firebaseapp.com",
@@ -18,14 +25,14 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 window.firebaseAuthHelpers = {
-async signInWithGoogle() {
-  const result = await signInWithPopup(auth, provider);
-  return result.user;
-},
+  async signInWithGoogle() {
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  },
 
   async signOutUser() {
     return await signOut(auth);
@@ -33,5 +40,20 @@ async signInWithGoogle() {
 
   onUserChanged(callback) {
     return onAuthStateChanged(auth, callback);
+  },
+
+  async saveSkills(uid, skills) {
+    await setDoc(doc(db, "users", uid), {
+      skills: skills
+    }, { merge: true });
+  },
+
+  async loadSkills(uid) {
+    const snap = await getDoc(doc(db, "users", uid));
+
+    if (!snap.exists()) return [];
+
+    const data = snap.data();
+    return data.skills || [];
   }
 };
