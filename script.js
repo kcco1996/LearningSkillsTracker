@@ -1396,7 +1396,9 @@ function renderSkillTree() {
         return;
       }
 
-      await window.firebaseAuthHelpers.signInWithGoogle();
+      const user = await window.firebaseAuthHelpers.signInWithGoogle();
+currentUser = user;
+renderAuthStatus();
     } catch (error) {
       console.error("Google sign-in failed:", error);
       alert("Google sign-in failed. Check the console for details.");
