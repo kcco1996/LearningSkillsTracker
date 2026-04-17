@@ -8,13 +8,14 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
 
 // 1) Paste your real Firebase config here
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "PASTE_YOURS_HERE",
-  authDomain: "PASTE_YOURS_HERE",
-  projectId: "PASTE_YOURS_HERE",
-  storageBucket: "PASTE_YOURS_HERE",
-  messagingSenderId: "PASTE_YOURS_HERE",
-  appId: "PASTE_YOURS_HERE"
+  apiKey: "AIzaSyCBdu7ZLTrFwWbkcxingJFK4mf2KxoRQ3g",
+  authDomain: "learningskillstracker.firebaseapp.com",
+  projectId: "learningskillstracker",
+  storageBucket: "learningskillstracker.firebasestorage.app",
+  messagingSenderId: "440128091651",
+  appId: "1:440128091651:web:fd68fe6cc7301bad458036"
 };
 
 // 2) Initialize Firebase
