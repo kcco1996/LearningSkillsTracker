@@ -1434,10 +1434,11 @@ function initAuth() {
     return;
   }
 
-  window.firebaseAuthHelpers.onUserChanged((user) => {
-    currentUser = user || null;
-    renderAuthStatus();
-  });
+window.firebaseAuthHelpers.onUserChanged((user) => {
+  console.log("Auth changed:", user);
+  currentUser = user || null;
+  renderAuthStatus();
+});
 }
 
 function init() {

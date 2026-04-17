@@ -22,9 +22,10 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 window.firebaseAuthHelpers = {
-  async signInWithGoogle() {
-    return await signInWithPopup(auth, provider);
-  },
+async signInWithGoogle() {
+  const result = await signInWithPopup(auth, provider);
+  return result.user;
+},
 
   async signOutUser() {
     return await signOut(auth);
