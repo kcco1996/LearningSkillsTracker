@@ -84,6 +84,8 @@
 
   let state = loadState();
 
+  let currentUser = null;
+
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -247,6 +249,24 @@
     const totalXP = getTotalXP();
     $("pillSummary").textContent = `${state.skills.length} skills • ${totalXP} XP • ${streak} day streak`;
   }
+
+  function renderAuthStatus() {
+  const statusEl = $("authStatus");
+  const signInBtn = $("btnGoogleSignIn");
+  const signOutBtn = $("btnGoogleSignOut");
+
+  if (!statusEl || !signInBtn || !signOutBtn) return;
+
+  if (currentUser) {
+    statusEl.textContent = `Signed in as ${currentUser.displayName || currentUser.email || "User"}`;
+    signInBtn.hidden = true;
+    signOutBtn.hidden = false;
+  } else {
+    statusEl.textContent = "Not signed in";
+    signInBtn.hidden = false;
+    signOutBtn.hidden = true;
+  }
+}
 
   function showView(viewName) {
     document.querySelectorAll(".nav__item").forEach((btn) => {
@@ -1368,6 +1388,32 @@ function renderSkillTree() {
     $("btnReset")?.addEventListener("click", resetEverything);
   }
 
+  function bindAuthButtons() {
+  $("btnGoogleSignIn")?.addEventListener("click", async () => {
+    try {
+      if (!window.firebaseAuthHelpers) {
+        alert("Firebase auth is not loaded yet.");
+        return;
+      }
+
+      await window.firebaseAuthHelpers.signInWithGoogle();
+    } catch (error) {
+      console.error("Google sign-in failed:", error);
+      alert("Google sign-in failed. Check the console for details.");
+    }
+  });
+
+  $("btnGoogleSignOut")?.addEventListener("click", async () => {
+    try {
+      if (!window.firebaseAuthHelpers) return;
+      await window.firebaseAuthHelpers.signOutUser();
+    } catch (error) {
+      console.error("Sign-out failed:", error);
+      alert("Sign-out failed. Check the console for details.");
+    }
+  });
+}
+
 function renderAll() {
   renderSummary();
   renderDashboard();
@@ -1381,21 +1427,38 @@ function renderAll() {
   renderSkillPrerequisiteOptions();
 }
 
-  function init() {
-    bindNavigation();
-    bindForms();
-    bindFilters();
-    bindDataButtons();
-    renderAll();
-    showView("dashboard");
-
-    if ($("sessionDate")) {
-      $("sessionDate").value = new Date().toISOString().split("T")[0];
-    }
-
-    renderSessionSkillOptions();
-    renderSkillPrerequisiteOptions();
+function initAuth() {
+  if (!window.firebaseAuthHelpers) {
+    console.warn("Firebase auth helpers not ready yet.");
+    renderAuthStatus();
+    return;
   }
+
+  window.firebaseAuthHelpers.onUserChanged((user) => {
+    currentUser = user || null;
+    renderAuthStatus();
+  });
+}
+
+function init() {
+  bindNavigation();
+  bindForms();
+  bindFilters();
+  bindDataButtons();
+  bindAuthButtons();
+
+  renderAll();
+  showView("dashboard");
+
+  if ($("sessionDate")) {
+    $("sessionDate").value = new Date().toISOString().split("T")[0];
+  }
+
+  renderSessionSkillOptions();
+  renderSkillPrerequisiteOptions();
+  renderAuthStatus();
+  initAuth();
+}
 
   init();
 })();

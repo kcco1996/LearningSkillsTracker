@@ -76,9 +76,19 @@
           <p class="subtitle" id="viewSubtitle">Your real-life skill tree.</p>
         </div>
 
-        <div class="topbar__right">
-          <div class="pill" id="pillSummary">Loading…</div>
-        </div>
+     <div class="topbar__right">
+  <div class="pill" id="pillSummary">Loading…</div>
+
+  <button class="btn btn--ghost" id="btnGoogleSignIn" type="button">
+    Sign in with Google
+  </button>
+
+  <button class="btn btn--ghost" id="btnGoogleSignOut" type="button" hidden>
+    Sign out
+  </button>
+
+  <div class="pill" id="authStatus">Not signed in</div>
+</div>
       </header>
 
       <section class="content">
@@ -523,6 +533,7 @@
 
   </div>
 
-  <script src="script.js"></script>
+ <script type="module" src="firebase-auth.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
