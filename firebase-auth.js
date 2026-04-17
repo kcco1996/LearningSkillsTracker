@@ -25,6 +25,8 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
@@ -35,7 +37,7 @@ window.firebaseAuthHelpers = {
   },
 
   async signOutUser() {
-    return await signOut(auth);
+    await signOut(auth);
   },
 
   onUserChanged(callback) {
@@ -43,9 +45,11 @@ window.firebaseAuthHelpers = {
   },
 
   async saveSkills(uid, skills) {
-    await setDoc(doc(db, "users", uid), {
-      skills: skills
-    }, { merge: true });
+    await setDoc(
+      doc(db, "users", uid),
+      { skills: skills },
+      { merge: true }
+    );
   },
 
   async loadSkills(uid) {
