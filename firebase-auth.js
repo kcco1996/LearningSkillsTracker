@@ -67,3 +67,5 @@ window.firebaseAuthHelpers = {
     return data.skills || [];
   }
 };
+
+window.dispatchEvent(new Event("firebaseAuthReady"));

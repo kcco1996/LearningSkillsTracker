@@ -1481,8 +1481,13 @@ function init() {
 
   renderSessionSkillOptions();
   renderSkillPrerequisiteOptions();
-  renderAuthStatus();
+ renderAuthStatus();
+
+if (window.firebaseAuthHelpers) {
   initAuth();
+} else {
+  window.addEventListener("firebaseAuthReady", initAuth, { once: true });
+}
 }
 
   init();
