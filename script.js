@@ -1481,13 +1481,23 @@ function init() {
 
   renderSessionSkillOptions();
   renderSkillPrerequisiteOptions();
- renderAuthStatus();
+renderAuthStatus();
 
-if (window.firebaseAuthHelpers) {
-  initAuth();
-} else {
-  window.addEventListener("firebaseAuthReady", initAuth, { once: true });
-}
+let authWaitAttempts = 0;
+
+const waitForFirebaseAuth = setInterval(() => {
+  authWaitAttempts++;
+
+  if (window.firebaseAuthHelpers) {
+    clearInterval(waitForFirebaseAuth);
+    initAuth();
+  }
+
+  if (authWaitAttempts > 50) {
+    clearInterval(waitForFirebaseAuth);
+    console.warn("Firebase auth helpers still not ready after waiting.");
+  }
+}, 100);
 }
 
   init();
