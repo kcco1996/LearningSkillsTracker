@@ -1445,25 +1445,24 @@ function initAuth() {
     return;
   }
 
-window.firebaseAuthHelpers.onUserChanged(async (user) => {
-  currentUser = user || null;
+  window.firebaseAuthHelpers.onUserChanged(async (user) => {
+    currentUser = user || null;
 
-  if (currentUser) {
-    try {
-      const cloudSkills =
-        await window.firebaseAuthHelpers.loadSkills(currentUser.uid);
+    if (currentUser) {
+      try {
+        const cloudSkills = await window.firebaseAuthHelpers.loadSkills(currentUser.uid);
 
-      if (cloudSkills.length) {
-        state.skills = cloudSkills;
+        state.skills = Array.isArray(cloudSkills) ? cloudSkills : [];
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (error) {
+        console.error("Cloud load failed:", error);
       }
-    } catch (error) {
-      console.error("Cloud load failed:", error);
     }
-  }
 
-  renderAuthStatus();
-  renderAll();
-});
+    renderAuthStatus();
+    renderAll();
+  });
 }
 
 function init() {
